@@ -1,0 +1,15 @@
+# .flake8
+
+[flake8]
+# Ignore certain errors
+# W503: line break before binary operator (black handles this)
+ignore = W503
+# Set max line length to match black's default
+max-line-length = 88
+# Exclude directories that we don't need to lint
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    migrations,
+    .vscode

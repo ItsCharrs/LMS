@@ -1,0 +1,4 @@
+/* NEW and CORRECT version for v4.0+ */
+@import "tailwindcss/preflight"; /* This is the new '@tailwind base' */
+
+@tailwind utilities; /* This remains the same, but now also includes component classes */

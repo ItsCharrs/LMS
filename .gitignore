@@ -1,0 +1,9 @@
+# .gitignore (in the root LogiPro folder)
+
+# IDE / Editor specific
+.vscode/
+.idea/
+
+# Operating System files
+.DS_Store
+Thumbs.db

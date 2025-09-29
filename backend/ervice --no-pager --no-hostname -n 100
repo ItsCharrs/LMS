@@ -1,0 +1,13 @@
+[0;1;31m×[0m docker.service - Docker Application Container Engine
+     Loaded: loaded (]8;;file://itscharrs-20kqs03r00/usr/lib/systemd/system/docker.service\/usr/lib/systemd/system/docker.service]8;;\; [0;1;32menabled[0m; preset: [0;1;38:5:185mdisabled[0m)
+     Active: [0;1;31mfailed[0m (Result: exit-code) since Fri 2025-09-26 20:16:40 EAT; 36s ago
+ Invocation: cc18e6c4ed4548ba879b6ecd044da45f
+TriggeredBy: [0;1;31m×[0m docker.socket
+       Docs: ]8;;https://docs.docker.com\https://docs.docker.com]8;;\
+    Process: 57339 ExecStart=/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock [0;1;31m(code=exited, status=1/FAILURE)[0m
+   Main PID: 57339 (code=exited, status=1/FAILURE)
+
+Sep 26 20:16:40 itscharrs-20kqs03r00 systemd[1]: docker.service: Scheduled restart job, restart counter is at 3.
+Sep 26 20:16:40 itscharrs-20kqs03r00 systemd[1]: [0;1;38:5:185m[0;1;39m[0;1;38:5:185mdocker.service: Start request repeated too quickly.[0m
+Sep 26 20:16:40 itscharrs-20kqs03r00 systemd[1]: [0;1;38:5:185m[0;1;39m[0;1;38:5:185mdocker.service: Failed with result 'exit-code'.[0m
+Sep 26 20:16:40 itscharrs-20kqs03r00 systemd[1]: [0;1;31m[0;1;39m[0;1;31mFailed to start Docker Application Container Engine.[0m
