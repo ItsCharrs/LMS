@@ -6,14 +6,30 @@ import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/context/AuthContext";
 import { WarehouseForm } from "./WarehouseForm";
 import { Button } from "@/components/ui/button";
+import apiClient from "@/lib/api";
+
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -32,8 +48,10 @@ interface Warehouse {
 }
 
 export default function WarehousesPage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  // The 'mutate' function is our key to refreshing data!
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deleteAlertOpen, setDeleteAlertOpen] = useState(false);
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+
   const { data: warehouses, error, isLoading, mutate } = useApi<Warehouse[]>('/warehouses/');
   const { backendUser } = useAuth();
 
@@ -41,9 +59,35 @@ export default function WarehousesPage() {
     return <p className="p-6">You do not have permission to view this page.</p>;
   }
 
-  const handleSuccess = () => {
-    setIsModalOpen(false); // Close the modal
-    mutate(); // Re-fetch the data from the API
+  const handleCreate = () => {
+    setSelectedWarehouse(null);
+    setModalOpen(true);
+  };
+
+  const handleEdit = (warehouse: Warehouse) => {
+    setSelectedWarehouse(warehouse);
+    setModalOpen(true);
+  };
+
+  const handleDelete = (warehouse: Warehouse) => {
+    setSelectedWarehouse(warehouse);
+    setDeleteAlertOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!selectedWarehouse) return;
+    try {
+      await apiClient.delete(`/warehouses/${selectedWarehouse.id}/`);
+      mutate();
+      setDeleteAlertOpen(false);
+    } catch (error) {
+      console.error("Failed to delete warehouse", error);
+    }
+  };
+
+  const handleFormSuccess = () => {
+    setModalOpen(false);
+    mutate();
   };
 
   if (error) return <div className="p-6">Failed to load warehouses.</div>;
@@ -52,20 +96,7 @@ export default function WarehousesPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Warehouses</h1>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-          <DialogTrigger asChild>
-            <Button>Add New Warehouse</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Add New Warehouse</DialogTitle>
-              <DialogDescription>
-                Fill in the details for the new warehouse. Click create when You&apos;re done.
-              </DialogDescription>
-            </DialogHeader>
-            <WarehouseForm onSuccess={handleSuccess} />
-          </DialogContent>
-        </Dialog>
+        <Button onClick={handleCreate}>Add New Warehouse</Button>
       </div>
       
       <div className="bg-white shadow rounded-lg">
@@ -82,26 +113,50 @@ export default function WarehousesPage() {
               <TableRow>
                 <TableCell colSpan={3} className="text-center">Loading...</TableCell>
               </TableRow>
-            ) : warehouses && warehouses.length > 0 ? (
-              warehouses.map((warehouse) => (
-                <TableRow key={warehouse.id}>
-                  <TableCell className="font-medium">{warehouse.name}</TableCell>
-                  <TableCell>{warehouse.city}, {warehouse.country}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm">Edit</Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center">
-                  No warehouses found.
+            ) : warehouses?.map((warehouse) => (
+              <TableRow key={warehouse.id}>
+                <TableCell className="font-medium">{warehouse.name}</TableCell>
+                <TableCell>{warehouse.city}, {warehouse.country}</TableCell>
+                <TableCell className="text-right">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm">...</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => handleEdit(warehouse)}>Edit</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleDelete(warehouse)} className="text-red-600">Delete</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </TableCell>
               </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{selectedWarehouse ? 'Edit Warehouse' : 'Add New Warehouse'}</DialogTitle>
+          </DialogHeader>
+          <WarehouseForm onSuccess={handleFormSuccess} initialData={selectedWarehouse} />
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the warehouse: &quot;{selectedWarehouse?.name}&quot;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
