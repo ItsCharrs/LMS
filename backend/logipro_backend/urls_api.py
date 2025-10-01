@@ -6,7 +6,7 @@ from users.views import UserListView
 from django.urls import path, include
 
 # 1. Import the specific views from the simplejwt library
-from users.views import UserListView, FirebaseLoginView, CurrentUserView
+from users.views import UserListView, FirebaseLoginView, CurrentUserView, CreateUserView
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -25,6 +25,7 @@ urlpatterns = [
     path("auth/firebase/", FirebaseLoginView.as_view(), name="firebase_login"),
     # Users URLs
     path("users/", UserListView.as_view(), name="user-list"),
+     path('users/create/', CreateUserView.as_view(), name='user-create'),
     # Add the new 'me' user URL
     path("users/me/", CurrentUserView.as_view(), name="user-me"),
     # Inventory URLs

@@ -23,3 +23,15 @@ export const productSchema = z.object({
 });
 
 export type ProductFormData = z.infer<typeof productSchema>;
+
+// New user schema for registration and user management
+export const userSchema = z.object({
+  first_name: z.string().min(2, { message: "First name is required." }),
+  last_name: z.string().min(2, { message: "Last name is required." }),
+  email: z.string().email({ message: "Please enter a valid email address." }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters long." }),
+  // We use z.enum to ensure the role is one of the valid choices
+  role: z.enum(['ADMIN', 'MANAGER', 'DRIVER', 'CUSTOMER']),
+});
+
+export type UserFormData = z.infer<typeof userSchema>;
