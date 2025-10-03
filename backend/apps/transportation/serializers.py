@@ -6,19 +6,18 @@ from users.models import User
 from users.serializers import UserSerializer
 from orders.serializers import JobSerializer
 
-# This serializer should be defined first
+# This serializer must be defined before it is used in ShipmentSerializer
 class VehicleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Vehicle
         fields = '__all__'
 
-# This serializer should be defined second
+# This serializer must be defined before it is used in ShipmentSerializer
 class DriverSerializer(serializers.ModelSerializer):
-    # For READ operations, show the nested user object
+    # For READ operations, we want to see the nested user details
     user = UserSerializer(read_only=True)
     
-    # --- THIS IS THE KEY CHANGE ---
-    # For WRITE operations, accept the user's UUID
+    # For WRITE operations (creating/updating a Driver profile), we accept the user's UUID
     user_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         source='user',
@@ -29,24 +28,27 @@ class DriverSerializer(serializers.ModelSerializer):
         model = Driver
         fields = ['id', 'user', 'user_id', 'license_number', 'phone_number']
 
-# This serializer is defined last so it can use the ones above
+# This serializer is defined last so it can use the others
 class ShipmentSerializer(serializers.ModelSerializer):
+    # For READ operations, show the full nested objects for clarity
     job = JobSerializer(read_only=True)
     driver = DriverSerializer(read_only=True)
     vehicle = VehicleSerializer(read_only=True)
 
+    # For WRITE operations (PATCH request from the Job Detail page),
+    # we accept the UUIDs for the driver and vehicle
     driver_id = serializers.PrimaryKeyRelatedField(
         queryset=Driver.objects.all(),
         source='driver',
         write_only=True,
-        required=False,
+        required=False, # Make it optional so we can assign one at a time if needed
         allow_null=True
     )
     vehicle_id = serializers.PrimaryKeyRelatedField(
         queryset=Vehicle.objects.all(),
         source='vehicle',
         write_only=True,
-        required=False,
+        required=False, # Make it optional
         allow_null=True
     )
 

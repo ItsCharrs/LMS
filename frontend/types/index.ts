@@ -46,6 +46,15 @@ export interface Job {
   updated_at: string;
 }
 
+export interface Shipment {
+  id: string;
+  job: string; // The Job ID
+  driver: Driver | null;
+  vehicle: Vehicle | null;
+  status: 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';
+  // Add other date fields here if you need to display them
+}
+
 export interface DashboardSummary {
   total_customers: number;
   total_jobs: number;
@@ -57,13 +66,4 @@ export interface JobChartData {
   date: string;
   short_date: string;
   jobs: number;
-}
-
-// ... (add this new type)
-export interface Shipment {
-  id: string;
-  job: string; // The Job ID
-  driver: Driver | null;
-  vehicle: Vehicle | null;
-  status: string;
 }

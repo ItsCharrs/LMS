@@ -53,7 +53,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             {backendUser && backendUser.role === 'ADMIN' && (
               <>
                 <li className="mt-4 mb-2 px-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">Admin</li>
-                <li className="mb-2"><a href="/users" className="block p-2 rounded hover:bg-gray-700">User Management</a></li>
+                <li className="mb-2"><a href="/users" className="block p-2 rounded hover:bg-gray-700">Users</a></li>
               </>
             )}
           </ul>

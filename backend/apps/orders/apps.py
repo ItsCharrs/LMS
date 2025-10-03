@@ -1,4 +1,5 @@
 # apps/orders/apps.py
+
 from django.apps import AppConfig
 
 class OrdersConfig(AppConfig):
@@ -6,5 +7,9 @@ class OrdersConfig(AppConfig):
     name = 'orders'
 
     def ready(self):
-        # Import signals so they are registered when the app is ready
+        """
+        This method is called when the app is fully loaded.
+        We import our signals here to ensure they are registered.
+        """
+        # The following line is crucial for your signals to work.
         import orders.signals
