@@ -1,24 +1,21 @@
-# apps/billing/admin.py
-
 from django.contrib import admin
 from .models import Invoice
 
-
 @admin.register(Invoice)
 class InvoiceAdmin(admin.ModelAdmin):
-    """
-    Admin configuration for the Invoice model.
-    """
-
-    list_display = ("id", "order", "status", "total_amount", "due_date", "created_at")
-    list_filter = ("status", "due_date")
-    search_fields = (
-        "id",
-        "order__id",
-        "order__customer__username",
-        "stripe_payment_intent_id",
+    list_display = ('id', 'job', 'status', 'payment_method', 'total_amount', 'due_date')
+    
+    list_filter = ('status', 'due_date', 'payment_method')
+    
+    search_fields = ('job__id', 'stripe_payment_intent_id') 
+    autocomplete_fields = ['job']
+    
+    fieldsets = (
+        ('Invoice Details', {
+            'fields': ('job', 'status', 'due_date', 'total_amount'),
+        }),
+        ('Payment Information', {
+            'fields': ('payment_method', 'payment_notes', 'stripe_payment_intent_id'),
+            'description': 'Details on how and when the invoice was paid. Use notes for manual payments like cheques.'
+        }),
     )
-    readonly_fields = ("stripe_payment_intent_id", "created_at")
-
-    # Allows for easy navigation back to the related order
-    autocomplete_fields = ["order"]

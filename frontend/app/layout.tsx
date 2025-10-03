@@ -1,9 +1,8 @@
-// frontend/app/layout.tsx
-
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext"; // <-- Import AuthProvider
+import { AuthProvider } from "@/context/AuthContext";
+import { Toaster } from 'react-hot-toast'; // <-- Import Toaster
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,8 +19,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <AuthProvider> {/* <-- Wrap children with AuthProvider */}
+        <AuthProvider>
           {children}
+          <Toaster position="top-center" /> {/* <-- Add Toaster component */}
         </AuthProvider>
       </body>
     </html>

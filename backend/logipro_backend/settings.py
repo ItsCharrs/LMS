@@ -61,7 +61,6 @@ INSTALLED_APPS = [
     # Local (Our) Apps
     "core.apps.CoreConfig",
     "users.apps.UsersConfig",
-    "inventory.apps.InventoryConfig",
     "orders.apps.OrdersConfig",
     "transportation.apps.TransportationConfig",
     "billing.apps.BillingConfig",

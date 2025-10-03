@@ -28,8 +28,6 @@ urlpatterns = [
      path('users/create/', CreateUserView.as_view(), name='user-create'),
     # Add the new 'me' user URL
     path("users/me/", CurrentUserView.as_view(), name="user-me"),
-    # Inventory URLs
-    path("", include("inventory.urls")),
     # Order URLs
     path("", include("orders.urls")),
     # Transportation URLs

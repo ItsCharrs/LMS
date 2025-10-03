@@ -1,4 +1,3 @@
-// frontend/app/(dashboard)/orders/page.tsx
 "use client";
 
 import Link from "next/link"; // Next.js component for client-side navigation
@@ -14,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { StatusBadge } from '@/components/shared/StatusBadge'; // <-- Import StatusBadge
 
 export default function OrdersPage() {
   const { data: orders, error, isLoading } = useApi<Order[]>('/orders/');
@@ -56,8 +56,8 @@ export default function OrdersPage() {
                   <TableCell>{order.customer.first_name || order.customer.username}</TableCell>
                   <TableCell>{new Date(order.order_date).toLocaleDateString()}</TableCell>
                   <TableCell>
-                    {/* We can add a colored badge for status later */}
-                    <span className="font-medium">{order.status}</span>
+                    {/* Replace plain text status with StatusBadge component */}
+                    <StatusBadge status={order.status} />
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/orders/${order.id}`} passHref>

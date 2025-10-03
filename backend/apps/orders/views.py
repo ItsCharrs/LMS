@@ -1,27 +1,21 @@
 # apps/orders/views.py
 
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from .models import Order, OrderItem
-from .serializers import OrderSerializer, OrderItemSerializer
+from .models import Job
+from .serializers import JobSerializer
 from core.permissions import IsAdminOrManagerUser
 
-
-class OrderViewSet(viewsets.ModelViewSet):
+class JobViewSet(viewsets.ModelViewSet):
     """
-    A ViewSet for viewing and editing Orders.
+    A ViewSet for viewing and editing Jobs.
+    Provides `list`, `create`, `retrieve`, `update`,
+    and `destroy` actions for the Job model.
     """
-
-    queryset = Order.objects.all().prefetch_related("items").select_related("customer")
-    serializer_class = OrderSerializer
-    permission_classes = [IsAdminOrManagerUser]
-
-
-class OrderItemViewSet(viewsets.ModelViewSet):
-    """
-    A ViewSet for viewing and editing Order Items.
-    """
-
-    queryset = OrderItem.objects.all()
-    serializer_class = OrderItemSerializer
+    # We query the new Job model
+    queryset = Job.objects.all().select_related('customer').order_by('-created_at')
+    
+    # We use the new JobSerializer
+    serializer_class = JobSerializer
+    
+    # We protect the endpoint so only managers can access it
     permission_classes = [IsAdminOrManagerUser]

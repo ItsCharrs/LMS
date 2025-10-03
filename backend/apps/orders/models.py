@@ -3,45 +3,49 @@
 from django.db import models
 from django.conf import settings
 from core.models import BaseModel
-from inventory.models import Product
 
-
-class Order(BaseModel):
+class Job(BaseModel):
     """
-    Represents a customer's order.
+    Represents a transportation job requested by a customer.
     """
+    class JobStatus(models.TextChoices):
+        PENDING = 'PENDING', 'Pending'
+        IN_PROGRESS = 'IN_PROGRESS', 'In Progress'
+        COMPLETED = 'COMPLETED', 'Completed'
+        CANCELLED = 'CANCELLED', 'Cancelled'
 
-    class OrderStatus(models.TextChoices):
-        PENDING = "PENDING", "Pending"
-        PROCESSING = "PROCESSING", "Processing"
-        SHIPPED = "SHIPPED", "Shipped"
-        DELIVERED = "DELIVERED", "Delivered"
-        CANCELLED = "CANCELLED", "Cancelled"
+    # --- ADD THIS NEW CLASS FOR SERVICE TYPES ---
+    class ServiceType(models.TextChoices):
+        RESIDENTIAL_MOVING = 'RESIDENTIAL_MOVING', 'Residential Moving'
+        OFFICE_RELOCATION = 'OFFICE_RELOCATION', 'Office Relocation'
+        PALLET_DELIVERY = 'PALLET_DELIVERY', 'Pallet Delivery'
+        SMALL_DELIVERIES = 'SMALL_DELIVERIES', 'Small Deliveries'
 
-    customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="orders"
+    customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='jobs')
+    
+    # --- ADD THIS NEW FIELD ---
+    service_type = models.CharField(
+        max_length=50, 
+        choices=ServiceType.choices,
+        default=ServiceType.SMALL_DELIVERIES # Set a sensible default
     )
-    status = models.CharField(
-        max_length=20, choices=OrderStatus.choices, default=OrderStatus.PENDING
-    )
-    order_date = models.DateTimeField(auto_now_add=True)
+    
+    cargo_description = models.TextField()
+    
+    # Pickup Information
+    pickup_address = models.TextField()
+    pickup_city = models.CharField(max_length=100)
+    pickup_contact_person = models.CharField(max_length=100)
+    pickup_contact_phone = models.CharField(max_length=20)
+    
+    # Delivery Information
+    delivery_address = models.TextField()
+    delivery_city = models.CharField(max_length=100)
+    delivery_contact_person = models.CharField(max_length=100)
+    delivery_contact_phone = models.CharField(max_length=20)
+
+    status = models.CharField(max_length=20, choices=JobStatus.choices, default=JobStatus.PENDING)
+    requested_pickup_date = models.DateTimeField()
 
     def __str__(self):
-        return f"Order {self.id} by {self.customer.username}"
-
-
-class OrderItem(BaseModel):
-    """
-    Represents a single item within an order.
-    """
-
-    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
-    product = models.ForeignKey(
-        Product, on_delete=models.PROTECT, related_name="order_items"
-    )
-    quantity = models.PositiveIntegerField()
-    # We store the price at the time of order to prevent changes if the product's price updates later.
-    price_at_order = models.DecimalField(max_digits=10, decimal_places=2)
-
-    def __str__(self):
-        return f"{self.quantity} of {self.product.sku}"
+        return f"Job {self.id} for {self.customer.username if self.customer else 'N/A'}"

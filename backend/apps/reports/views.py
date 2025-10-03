@@ -5,115 +5,93 @@ from django.db.models.functions import TruncDate
 from datetime import datetime, timedelta
 
 from core.permissions import IsAdminOrManagerUser
-from orders.models import Order
-from inventory.models import Product, Warehouse
+from orders.models import Job  # <-- Import Job instead of Order
 from transportation.models import Shipment
 from users.models import User
-
+# REMOVED: from logistics.models import Product # This line is no longer needed
 
 class DashboardSummaryView(views.APIView):
     """
     Provides a high-level summary of key metrics for the dashboard.
+    Updated to use the Job model.
     """
-
     permission_classes = [IsAdminOrManagerUser]
 
     def get(self, request, *args, **kwargs):
-        # Count total objects for key models
         total_customers = User.objects.filter(role=User.Role.CUSTOMER).count()
-        total_orders = Order.objects.count()
-        total_products = Product.objects.count()
-        shipments_in_transit = Shipment.objects.filter(
-            status=Shipment.ShipmentStatus.IN_TRANSIT
-        ).count()
+        total_jobs = Job.objects.count()  # <-- Changed from total_orders
+        shipments_in_transit = Shipment.objects.filter(status=Shipment.ShipmentStatus.IN_TRANSIT).count()
 
-        # Calculate sales for the last 30 days
+        # Calculate revenue for the last 30 days from COMPLETED jobs
         thirty_days_ago = datetime.now() - timedelta(days=30)
-        recent_sales = (
-            Order.objects.filter(
-                status=Order.OrderStatus.DELIVERED, order_date__gte=thirty_days_ago
-            ).aggregate(total_revenue=Sum("invoice__total_amount"))["total_revenue"]
-            or 0
-        )
+        recent_sales = Job.objects.filter(
+            status=Job.JobStatus.COMPLETED,
+            # We assume the completion date is related to the shipment's actual_arrival
+            shipment__actual_arrival__gte=thirty_days_ago
+        ).aggregate(
+            total_revenue=Sum('invoice__total_amount')
+        )['total_revenue'] or 0
 
         summary_data = {
-            "total_customers": total_customers,
-            "total_orders": total_orders,
-            "total_products": total_products,
-            "shipments_in_transit": shipments_in_transit,
-            "recent_revenue_30d": f"{recent_sales:.2f}",
+            'total_customers': total_customers,
+            'total_jobs': total_jobs,  # <-- Changed from total_orders
+            'shipments_in_transit': shipments_in_transit,
+            'recent_revenue_30d': f"{recent_sales:.2f}",
+            # 'total_products' is no longer relevant to this business model
         }
 
         return Response(summary_data, status=status.HTTP_200_OK)
 
-
-class RecentOrdersChartView(views.APIView):
+class RecentJobsChartView(views.APIView):
     """
-    Provides data formatted for a chart of orders over the last N days.
-    Defaults to 7 days.
+    Provides data for a chart of jobs created over the last N days.
+    Renamed from RecentOrdersChartView.
     """
     permission_classes = [IsAdminOrManagerUser]
 
     def get(self, request, *args, **kwargs):
-        # Get the number of days from query params, default to 7
         try:
             days_ago = int(request.query_params.get('days', 7))
         except (ValueError, TypeError):
             days_ago = 7
 
-        # Calculate the start date (days_ago days before today, time component zeroed out)
-        # Using .date() here simplifies the comparison to only the day part
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=days_ago - 1) # Start date is inclusive
+        start_date = datetime.now() - timedelta(days=days_ago)
         
-        # Query orders, group by date, and count them
-        orders_by_day = Order.objects.filter(
-            # Filter orders that occurred on or after the start date
-            order_date__date__gte=start_date
+        # Query jobs, group by date, and count them
+        jobs_by_day = Job.objects.filter(
+            created_at__gte=start_date  # Use created_at from BaseModel
         ).annotate(
-            # TruncDate('order_date') extracts just the date part (YYYY-MM-DD)
-            date=TruncDate('order_date')
+            date=TruncDate('created_at')
         ).values('date').annotate(
             count=Count('id')
         ).order_by('date')
 
-        # To ensure all days in the range are present (even with 0 orders),
-        # we can build a complete date range map.
-        date_map = {item['date'].strftime('%Y-%m-%d'): item['count'] for item in orders_by_day}
+        date_map = {item['date'].strftime('%Y-%m-%d'): item['count'] for item in jobs_by_day}
         
         chart_data = []
-        # Iterate over the date range from start_date up to and including end_date
-        for i in range(days_ago):
-            date = start_date + timedelta(days=i)
+        # Generate data for the last 'days_ago' + today
+        for i in range(days_ago + 1):
+            date = (start_date + timedelta(days=i)).date()
             date_str = date.strftime('%Y-%m-%d')
             chart_data.append({
                 'date': date_str,
-                # Format date for display (e.g., "Sep 30")
                 'short_date': date.strftime('%b %d'), 
-                'orders': date_map.get(date_str, 0) # Use the count from our query, or 0
+                'jobs': date_map.get(date_str, 0) # <-- Changed to 'jobs'
             })
 
         return Response(chart_data, status=status.HTTP_200_OK)
 
-
-class SalesReportView(views.APIView):
+class JobStatusReportView(views.APIView):
     """
-    Provides a report on sales, groupable by a specified period.
-    Example: /api/v1/reports/sales/?group_by=month
+    Provides a report on job counts and revenue grouped by status.
+    Renamed from SalesReportView.
     """
-
     permission_classes = [IsAdminOrManagerUser]
 
     def get(self, request, *args, **kwargs):
-        # For simplicity, we'll just show total sales per status for now.
-        # A real implementation would parse date ranges from query params.
+        jobs_by_status = Job.objects.values('status').annotate(
+            job_count=Count('id'),
+            total_revenue=Sum('invoice__total_amount')
+        ).order_by('status')
 
-        sales_by_status = (
-            Order.objects.values("status")
-            .annotate(
-                order_count=Count("id"), total_revenue=Sum("invoice__total_amount")
-            )
-            .order_by("-total_revenue")
-        )
-
-        return Response(sales_by_status, status=status.HTTP_200_OK)
+        return Response(jobs_by_status, status=status.HTTP_200_OK)

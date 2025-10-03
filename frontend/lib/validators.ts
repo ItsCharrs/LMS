@@ -2,7 +2,10 @@
 import { z } from 'zod';
 
 export const warehouseSchema = z.object({
-  // ... your existing warehouse schema ...
+  name: z.string().min(1, { message: "Warehouse name is required." }),
+  address: z.string().min(1, { message: "Address is required." }),
+  city: z.string().min(1, { message: "City is required." }),
+  country: z.string().min(1, { message: "Country is required." }),
 });
 
 export type WarehouseFormData = z.infer<typeof warehouseSchema>;

@@ -1,9 +1,19 @@
 # apps/reports/urls.py
+
 from django.urls import path
-from .views import DashboardSummaryView, SalesReportView, RecentOrdersChartView
+from .views import (
+    DashboardSummaryView, 
+    RecentJobsChartView, 
+    JobStatusReportView
+)
 
 urlpatterns = [
-    path("summary/", DashboardSummaryView.as_view(), name="dashboard-summary"),
-    path("sales/", SalesReportView.as_view(), name="sales-report"),
-    path("recent-orders/", RecentOrdersChartView.as_view(), name="recent-orders-chart"),
+    # Endpoint for the main dashboard KPI cards
+    path('summary/', DashboardSummaryView.as_view(), name='dashboard-summary'),
+    
+    # Endpoint for the time-series chart data (e.g., jobs per day)
+    path('recent-jobs-chart/', RecentJobsChartView.as_view(), name='recent-jobs-chart'),
+    
+    # Endpoint for an aggregate report (e.g., total revenue per job status)
+    path('job-status-report/', JobStatusReportView.as_view(), name='job-status-report'),
 ]

@@ -2,7 +2,6 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-// Restoring path aliases for external component and utility imports
 import { warehouseSchema, WarehouseFormData } from "@/lib/validators";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,10 +13,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import apiClient from "../../../lib/api"; // Keeping relative path for apiClient
+import apiClient from "../../../lib/api";
 import { useState, useEffect } from "react";
+import { toast } from 'react-hot-toast';
 
-// --- 1. Define the shape of a Warehouse object ---
 interface Warehouse {
   id: string;
   name: string;
@@ -28,17 +27,16 @@ interface Warehouse {
 
 interface WarehouseFormProps {
   onSuccess: () => void;
-  // --- 2. Add an optional prop to pass in existing data for editing ---
   initialData?: Warehouse | null;
 }
 
 export function WarehouseForm({ onSuccess, initialData }: WarehouseFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const isEditMode = !!initialData; // Check if we are in edit mode
+  const isEditMode = !!initialData;
 
+  // Fix: Use WarehouseFormData as the generic type for useForm
   const form = useForm<WarehouseFormData>({
     resolver: zodResolver(warehouseSchema),
-    // --- 3. Set default values from initialData if it exists ---
     defaultValues: initialData || {
       name: "",
       address: "",
@@ -47,30 +45,27 @@ export function WarehouseForm({ onSuccess, initialData }: WarehouseFormProps) {
     },
   });
   
-  // --- 4. Use useEffect to reset the form if initialData changes ---
-  // This ensures the form fields update when a new 'initialData' object is passed (e.g., when editing a different warehouse).
   useEffect(() => {
     if (initialData) {
       form.reset(initialData);
     }
   }, [initialData, form]);
 
+  // Fix: Use WarehouseFormData as the parameter type
   async function onSubmit(values: WarehouseFormData) {
     setIsSubmitting(true);
     try {
       if (isEditMode) {
-        // --- 5. If editing, send a PUT request to the detail URL ---
-        // Use non-null assertion since isEditMode guarantees initialData is present
         await apiClient.put(`/warehouses/${initialData!.id}/`, values); 
-        console.log("Warehouse updated successfully!");
+        toast.success("Warehouse updated successfully!");
       } else {
-        // If creating, send a POST request
         await apiClient.post('/warehouses/', values);
-        console.log("Warehouse created successfully!");
+        toast.success("Warehouse created successfully!");
       }
       onSuccess();
     } catch (error) {
       console.error("Failed to save warehouse:", error);
+      toast.error("Failed to save warehouse. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
