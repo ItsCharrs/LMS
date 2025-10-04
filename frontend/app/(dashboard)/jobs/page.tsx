@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useApi } from "@/hooks/useApi";
 import { useAuth } from "@/context/AuthContext";
 import { Job } from "@/types";
-import { JobForm } from "./JobForm";
+import JobForm from "./JobForm"; 
 import { Button } from "@/components/ui/button";
 import { 
     Dialog, 

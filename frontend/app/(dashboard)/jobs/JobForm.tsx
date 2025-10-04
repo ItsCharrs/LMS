@@ -1,3 +1,4 @@
+// frontend/app/(dashboard)/jobs/JobForm.tsx
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -12,14 +13,12 @@ import apiClient from "@/lib/api";
 import { useState } from "react";
 import { useApi } from "@/hooks/useApi";
 import { BackendUser } from "@/types";
-// Don't forget to import toast if you plan to use it!
-// import { toast } from "react-hot-toast"; 
 
 interface JobFormProps {
   onSuccess: () => void;
 }
 
-export function JobForm({ onSuccess }: JobFormProps) {
+export default function JobForm({ onSuccess }: JobFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { data: customers, isLoading: isLoadingCustomers } = useApi<BackendUser[]>('/users/?role=CUSTOMER');
 
@@ -48,7 +47,6 @@ export function JobForm({ onSuccess }: JobFormProps) {
       onSuccess();
     } catch (error) {
       console.error("Failed to create job:", error);
-      // Here you would add a toast.error() notification
     } finally {
       setIsSubmitting(false);
     }
@@ -99,39 +97,19 @@ export function JobForm({ onSuccess }: JobFormProps) {
         )} />
 
         <h3 className="text-lg font-semibold pt-4 border-b">Pickup Details</h3>
-        <FormField name="pickup_address" control={form.control} render={({ field }) => (
-            <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField name="pickup_city" control={form.control} render={({ field }) => (
-            <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
+        <FormField name="pickup_address" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+        <FormField name="pickup_city" control={form.control} render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
         <div className="grid grid-cols-2 gap-4">
-            <FormField name="pickup_contact_person" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="pickup_contact_phone" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Contact Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-            )} />
+            <FormField name="pickup_contact_person" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField name="pickup_contact_phone" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
         </div>
 
         <h3 className="text-lg font-semibold pt-4 border-b">Delivery Details</h3>
-        <FormField name="delivery_address" control={form.control} render={({ field }) => (
-            <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
-        <FormField name="delivery_city" control={form.control} render={({ field }) => (
-            <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-        )} />
+        <FormField name="delivery_address" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+        <FormField name="delivery_city" control={form.control} render={({ field }) => ( <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
         <div className="grid grid-cols-2 gap-4">
-            <FormField name="delivery_contact_person" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-            )} />
-            <FormField name="delivery_contact_phone" control={form.control} render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Contact Phone</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage /> {/* <-- FIX: Corrected component name and structure */}
-                </FormItem>
-            )} />
+            <FormField name="delivery_contact_person" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField name="delivery_contact_phone" control={form.control} render={({ field }) => ( <FormItem><FormLabel>Contact Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
         </div>
 
         <Button type="submit" disabled={isSubmitting} className="w-full">
