@@ -2,81 +2,228 @@
 "use client";
 
 import { useParams } from 'next/navigation';
-import { useApi } from '@/hooks/useApi'; // Now this will work
-import { Shipment } from '@/types';     // Now this will work
-import { Truck, PackageCheck, AlertCircle, Hourglass } from 'lucide-react';
+import { useApi } from '@/hooks/useApi';
+import { Shipment } from '@/types';
+import { Truck, PackageCheck, AlertCircle, Hourglass, Clock, User, CheckCircle2 } from 'lucide-react';
 import React from 'react';
 
-const StatusStep = ({ icon: Icon, title, description, isActive }: { icon: React.ElementType, title: string, description: string, isActive: boolean }) => (
-    <div className={`flex items-start gap-4 transition-opacity duration-500 ${isActive ? 'opacity-100' : 'opacity-40'}`}>
-        <div className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-blue-600' : 'bg-gray-700'}`}>
-            <Icon className="h-6 w-6 text-white" />
-        </div>
-        <div>
-            <h3 className={`font-semibold text-lg transition-colors ${isActive ? 'text-white' : 'text-gray-400'}`}>{title}</h3>
-            <p className="text-sm text-gray-400">{description}</p>
-        </div>
+const StatusStep = ({ icon: Icon, title, description, isActive, isCompleted }: { 
+  icon: React.ElementType, 
+  title: string, 
+  description: string, 
+  isActive: boolean,
+  isCompleted: boolean 
+}) => (
+  <div className={`flex items-start gap-4 p-4 rounded-xl transition-all duration-500 ${
+    isActive ? 'bg-blue-500/20 border border-blue-500/30' : 
+    isCompleted ? 'bg-green-500/10 border border-green-500/20' :
+    'bg-white/5 border border-white/10'
+  }`}>
+    <div className={`flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-500 ${
+      isCompleted ? 'bg-green-500 shadow-lg shadow-green-500/25' :
+      isActive ? 'bg-blue-500 shadow-lg shadow-blue-500/25' : 
+      'bg-gray-700'
+    }`}>
+      {isCompleted ? (
+        <CheckCircle2 className="h-6 w-6 text-white" />
+      ) : (
+        <Icon className="h-6 w-6 text-white" />
+      )}
     </div>
+    <div className="flex-1">
+      <h3 className={`font-bold text-lg transition-colors ${
+        isCompleted ? 'text-green-400' :
+        isActive ? 'text-blue-400' : 
+        'text-gray-400'
+      }`}>
+        {title}
+      </h3>
+      <p className={`text-sm mt-1 ${
+        isCompleted ? 'text-green-300' :
+        isActive ? 'text-blue-300' : 
+        'text-gray-400'
+      }`}>
+        {description}
+      </p>
+    </div>
+  </div>
 );
 
 export default function TrackingDetailPage() {
   const params = useParams();
   const jobId = params.id as string;
 
-  // --- THIS IS THE CHANGE: Use our hook to fetch live data ---
   const { data: shipments, error, isLoading } = useApi<Shipment[]>(jobId ? `/shipments/?job_id=${jobId}` : null);
   
   const currentShipment = shipments && shipments.length > 0 ? shipments[0] : null;
 
   const renderContent = () => {
     if (isLoading) {
-      return <div className="text-center text-gray-300">Loading tracking information...</div>;
+      return (
+        <div className="text-center py-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-500/20 mb-4">
+            <Hourglass className="h-8 w-8 text-blue-400 animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">Loading Tracking Information</h2>
+          <p className="text-gray-400">Getting the latest status of your delivery...</p>
+        </div>
+      );
     }
     if (error || !currentShipment) {
       return (
-        <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold">Tracking ID Not Found</h2>
-            <p className="text-gray-400 mt-2">Please check your Job ID and try again.</p>
+        <div className="text-center py-12">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-red-500/20 mb-4">
+            <AlertCircle className="h-8 w-8 text-red-400" />
+          </div>
+          <h2 className="text-3xl font-black text-white mb-4">Tracking ID Not Found</h2>
+          <p className="text-gray-300 text-lg mb-6">
+            We couldn&apos;t find any delivery with this tracking number.
+          </p>
+          <div className="bg-white/5 rounded-xl p-4 border border-white/10 text-left max-w-md mx-auto">
+            <p className="text-sm text-gray-400 mb-2">Please check:</p>
+            <ul className="text-sm text-gray-400 space-y-1">
+              <li>• Your Job ID is correct</li>
+              <li>• The delivery was booked recently</li>
+              <li>• You&apos;re using the correct tracking number</li>
+            </ul>
+          </div>
         </div>
       );
     }
 
     const status = currentShipment.status;
+    const isPending = status === 'PENDING';
+    const isInTransit = status === 'IN_TRANSIT';
+    const isDelivered = status === 'DELIVERED';
+
     return (
-        <div className="space-y-8">
-            <StatusStep 
-                title="Job Pending" 
-                description="Your booking is confirmed and is waiting for a driver and vehicle to be assigned."
-                icon={Hourglass}
-                isActive={status === 'PENDING' || status === 'IN_TRANSIT' || status === 'DELIVERED'}
-            />
-            <StatusStep 
-                title="In Transit" 
-                description={`Assigned to ${currentShipment.driver?.user.first_name || 'driver'} with vehicle ${currentShipment.vehicle?.license_plate || ''}. Your delivery is on its way.`}
-                icon={Truck}
-                isActive={status === 'IN_TRANSIT' || status === 'DELIVERED'}
-            />
-            <StatusStep 
-                title="Delivered" 
-                description="Your items have been successfully delivered."
-                icon={PackageCheck}
-                isActive={status === 'DELIVERED'}
-            />
+      <div className="space-y-8">
+        {/* Header with Job Info */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-3 bg-white/10 backdrop-blur-lg rounded-full px-6 py-3 border border-white/20 mb-4">
+            <Truck className="h-5 w-5 text-blue-300" />
+            <span className="text-sm font-semibold text-blue-300">LIVE TRACKING</span>
+          </div>
+          <h2 className="text-2xl font-black text-white mb-2">
+            {isDelivered ? 'Delivery Complete' : 
+             isInTransit ? 'In Transit' : 
+             'Processing Your Order'}
+          </h2>
+          <p className="text-gray-400">
+            Job ID: <span className="font-mono text-blue-300">{jobId}</span>
+          </p>
         </div>
+
+        {/* Progress Bar */}
+        <div className="relative mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <div className={`text-sm font-semibold ${isPending ? 'text-blue-400' : 'text-gray-400'}`}>Pending</div>
+            <div className={`text-sm font-semibold ${isInTransit || isDelivered ? 'text-blue-400' : 'text-gray-400'}`}>In Transit</div>
+            <div className={`text-sm font-semibold ${isDelivered ? 'text-green-400' : 'text-gray-400'}`}>Delivered</div>
+          </div>
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+            <div 
+              className={`h-full transition-all duration-1000 ${
+                isDelivered ? 'bg-green-500 w-full' :
+                isInTransit ? 'bg-blue-500 w-2/3' :
+                'bg-blue-500 w-1/3'
+              }`}
+            ></div>
+          </div>
+        </div>
+
+        {/* Status Steps */}
+        <div className="space-y-4">
+          <StatusStep 
+            title="Job Confirmed" 
+            description="Your booking is confirmed and waiting for driver assignment."
+            icon={Hourglass}
+            isActive={isPending}
+            isCompleted={isInTransit || isDelivered}
+          />
+          <StatusStep 
+            title="In Transit" 
+            description={`Assigned to ${currentShipment.driver?.user.first_name || 'our driver'} with vehicle ${currentShipment.vehicle?.license_plate || 'our fleet'}. Your delivery is on its way.`}
+            icon={Truck}
+            isActive={isInTransit}
+            isCompleted={isDelivered}
+          />
+          <StatusStep 
+            title="Delivered" 
+            description="Your items have been successfully delivered at the destination."
+            icon={PackageCheck}
+            isActive={isDelivered}
+            isCompleted={isDelivered}
+          />
+        </div>
+
+        {/* Additional Information */}
+        {currentShipment.driver && (
+          <div className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-6">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              <User className="h-5 w-5 text-blue-400" />
+              Driver Information
+            </h3>
+            <div className="grid md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-400">Driver</p>
+                <p className="text-white font-semibold">
+                  {currentShipment.driver.user.first_name} {currentShipment.driver.user.last_name}
+                </p>
+              </div>
+              {currentShipment.vehicle && (
+                <div>
+                  <p className="text-gray-400">Vehicle</p>
+                  <p className="text-white font-semibold">
+                    {currentShipment.vehicle.license_plate}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Estimated Time */}
+        <div className="bg-gradient-to-r from-blue-600/20 to-cyan-600/20 backdrop-blur-lg rounded-2xl border border-white/10 p-6 text-center">
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <Clock className="h-5 w-5 text-cyan-400" />
+            <span className="text-sm font-semibold text-cyan-300">ESTIMATED TIMELINE</span>
+          </div>
+          <p className="text-gray-300">
+            {isDelivered ? 
+              'Delivery completed successfully' :
+              isInTransit ? 
+              'Your delivery is on the way - expect updates soon' :
+              'Your delivery is being processed - driver assignment in progress'
+            }
+          </p>
+        </div>
+      </div>
     );
   };
 
   return (
-    <div className="relative bg-gray-900 text-white min-h-[calc(100vh-144px)] flex items-center justify-center py-12">
-      <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/hero-background.jpg')" }}></div>
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm"></div>
+    <div className="relative bg-gray-900 text-white min-h-screen pt-20 pb-8">
+      <div className="absolute inset-0 bg-cover bg-center bg-fixed" style={{ backgroundImage: "url('/hero-background.jpg')" }}></div>
+      <div className="absolute inset-0 bg-gray-900/90 backdrop-blur-sm"></div>
       
-      <div className="relative z-10 container mx-auto px-6 text-center">
-        <div className="max-w-xl mx-auto bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 shadow-xl">
-            <h1 className="text-3xl font-bold mb-2">Delivery Status</h1>
-            <p className="text-sm text-gray-400 mb-8">For Job ID: <span className="font-mono">{jobId}</span></p>
+      {/* Animated Background Elements */}
+      <div className="absolute top-20 left-10 w-72 h-72 bg-blue-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow"></div>
+      <div className="absolute bottom-40 right-10 w-96 h-96 bg-cyan-600 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse-slow animation-delay-2000"></div>
+
+      <div className="relative z-10 container mx-auto px-4 sm:px-6">
+        <div className="max-w-2xl mx-auto bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 shadow-2xl overflow-hidden">
+          <div className="p-8">
             {renderContent()}
+          </div>
+          
+          {/* Support Information */}
+          <div className="border-t border-white/10 p-6 bg-white/5">
+            <div className="text-center">
+              <p className="text-sm text-gray-400 mb-2">Need help with your delivery?</p>
+              <p className="text-blue-300 font-semibold">Contact Support: (123) 456-7890</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

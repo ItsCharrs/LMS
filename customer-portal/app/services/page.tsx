@@ -1,7 +1,7 @@
 // customer-portal/app/services/page.tsx
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Truck, Building2, Package, CheckCircle, ArrowRight, Shield, Clock, Users } from 'lucide-react';
+import { Truck, Building2, Package, CheckCircle, ArrowRight } from 'lucide-react';
 import React from 'react';
 
 const services = [
@@ -38,13 +38,6 @@ const services = [
   }
 ];
 
-const stats = [
-  { icon: Users, number: "10,000+", label: "Happy Customers" },
-  { icon: Truck, number: "50,000+", label: "Successful Deliveries" },
-  { icon: Shield, number: "100%", label: "Insured & Protected" },
-  { icon: Clock, number: "24/7", label: "Customer Support" }
-];
-
 export default function ServicesPage() {
   return (
     <div className="relative bg-gray-900 text-white min-h-screen">
@@ -58,7 +51,7 @@ export default function ServicesPage() {
 
       <div className="relative z-10">
         {/* Clean Page Header */}
-        <section className="pt-32 pb-16">
+        <section className="pt-32 pb-20">
           <div className="container mx-auto px-6 text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white">
               Our Services
@@ -67,23 +60,6 @@ export default function ServicesPage() {
               Professional logistics solutions for every need. 
               <span className="text-blue-400 font-semibold"> Reliable, efficient, and tailored to you.</span>
             </p>
-          </div>
-        </section>
-
-        {/* Stats Section */}
-        <section className="py-8">
-          <div className="container mx-auto px-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {stats.map((stat, index) => (
-                <div key={index} className="bg-white/5 backdrop-blur-lg rounded-xl border border-white/10 p-4 text-center hover:bg-white/10 transition-all duration-300 hover:scale-105 group">
-                  <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors mb-3">
-                    <stat.icon className="h-5 w-5 text-blue-400" />
-                  </div>
-                  <div className="text-xl font-bold text-white">{stat.number}</div>
-                  <div className="text-xs text-gray-300 mt-1">{stat.label}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </section>
 

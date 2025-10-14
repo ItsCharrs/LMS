@@ -1,4 +1,4 @@
-npm // frontend/lib/token.ts
+ // frontend/lib/token.ts
 const LOCAL_STORAGE_KEY = 'logipro_auth_token';
 
 export const getToken = (): string | null => {
