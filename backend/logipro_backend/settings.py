@@ -147,7 +147,7 @@ SIMPLE_JWT = {
 }
 
 # CORS - Cross-Origin Resource Sharing
-CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:3000'])
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:3000' , 'http://localhost:3001'])
 
 # Firebase
 GOOGLE_APPLICATION_CREDENTIALS = env("GOOGLE_APPLICATION_CREDENTIALS")

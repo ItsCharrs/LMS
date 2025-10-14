@@ -5,8 +5,11 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 import React from "react";
-import Header from "@/components/Header"; // <-- Import the new Header
-import Footer from "@/components/Footer"; // <-- Import the new Footer
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+
+// <-- ADD THIS IMPORT -->
+import { AuthProvider } from "@/context/AuthContext"; 
 
 const manrope = Manrope({ 
   subsets: ["latin"], 
@@ -27,17 +30,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={manrope.className}>
-        <div className="flex flex-col min-h-screen">
-          
-          <Header /> {/* <-- Use the Header component */}
+        
+        {/* <-- WRAP THE CONTENT WITH AuthProvider --> */}
+        <AuthProvider> 
+          <div className="flex flex-col min-h-screen">
+            
+            <Header />
 
-          <main className="flex-grow">
-            {children}
-          </main>
+            <main className="flex-grow">
+              {children}
+            </main>
 
-          <Footer /> {/* <-- Use the Footer component */}
+            <Footer />
 
-        </div>
+          </div>
+        </AuthProvider>
+        {/* <-- AuthProvider end --> */}
+        
         <Toaster position="top-center" />
       </body>
     </html>

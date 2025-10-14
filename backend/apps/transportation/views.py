@@ -1,8 +1,9 @@
 # apps/transportation/views.py
 
 from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated , AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
+
 
 from .models import Vehicle, Driver, Shipment
 from .serializers import VehicleSerializer, DriverSerializer, ShipmentSerializer
@@ -40,7 +41,7 @@ class ShipmentViewSet(viewsets.ModelViewSet):
         'driver__user' # Pre-fetch the related user for efficiency
     )
     serializer_class = ShipmentSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [AllowAny]
     
     # --- THIS IS THE FIX ---
     # We specify the filter backend and tell it to use our custom filter class.
