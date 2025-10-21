@@ -63,7 +63,7 @@ export default function BookingPage() {
   // Debugging and safety measures
   useEffect(() => {
     console.log('🚀 Booking Page mounted - initial modal state:', isAuthModalOpen);
-  }, []);
+  }, [isAuthModalOpen]);
 
   useEffect(() => {
     console.log('🔍 Booking Page - AuthModal state changed:', isAuthModalOpen);
