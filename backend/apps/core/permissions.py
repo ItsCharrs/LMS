@@ -1,7 +1,8 @@
 # apps/core/permissions.py
 
 from rest_framework.permissions import BasePermission, SAFE_METHODS
-from users.models import User # It's best practice to import User to access the Role enum
+from users.models import User
+from transportation.models import Driver # Import the Driver model
 
 class IsAdminUser(BasePermission):
     """
@@ -34,28 +35,30 @@ class IsAdminOrManagerUser(BasePermission):
             return False
         return bool(request.user.role in [User.Role.ADMIN, User.Role.MANAGER])
 
+
+# --- THIS IS THE FINAL, CORRECTED CLASS ---
 class IsDriverUser(BasePermission):
     """
-    Allows access only to users with the DRIVER role.
+    Allows access only to authenticated users who have an associated Driver profile.
+    This is the definitive check.
     """
     def has_permission(self, request, view):
-        return bool(
-            request.user and 
-            request.user.is_authenticated and 
-            request.user.role == User.Role.DRIVER
-        )
+        # First, ensure the user is logged in at all.
+        if not (request.user and request.user.is_authenticated):
+            return False
+        
+        # Now, explicitly check if a Driver profile exists for this user.
+        # This is the most reliable check and does not depend on roles or related_names.
+        return Driver.objects.filter(user=request.user).exists()
+
 
 class IsAdminOrReadOnly(BasePermission):
     """
-    Allows read-only access (GET, HEAD, OPTIONS) for any user,
-    but write access (POST, PUT, PATCH, DELETE) is restricted to ADMIN users.
+    Allows read-only access for any user, but write access is restricted to ADMIN users.
     """
     def has_permission(self, request, view):
-        # Allow all read-only methods
         if request.method in SAFE_METHODS:
             return True
-
-        # For write methods, require the user to be an admin
         return bool(
             request.user and 
             request.user.is_authenticated and 

@@ -2,18 +2,20 @@
 import React from 'react';
 import { View, Text, Button, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { useApi } from '../hooks/useApi'; // We need to create this hook
-import { Shipment } from '../types';
+import { useApi } from '../hooks/useApi';
+import { ShipmentListItem } from '../types'; // <-- Use our new type
 
 // A reusable component for each item in our list
-const JobListItem = ({ item, onPress }: { item: Shipment, onPress: () => void }) => (
+const JobListItem = ({ item, onPress }: { item: ShipmentListItem, onPress: () => void }) => (
   <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
     <View>
-      <Text style={styles.itemAddress}>From: {item.job.pickup_address}</Text>
-      <Text style={styles.itemAddress}>To: {item.job.delivery_address}</Text>
+      {/* --- THESE LINES ARE NOW UPDATED --- */}
+      <Text style={styles.itemAddress}>From: {item.pickup_address}</Text>
+      <Text style={styles.itemAddress}>To: {item.delivery_address}</Text>
       <Text style={styles.itemDate}>
-        Scheduled for: {new Date(item.job.requested_pickup_date).toLocaleString()}
+        Scheduled for: {new Date(item.requested_pickup_date).toLocaleString()}
       </Text>
+      <Text style={styles.itemCustomer}>Customer: {item.customer_name}</Text>
     </View>
     <View style={[styles.statusBadge, styles[`status${item.status}`]]}>
       <Text style={styles.statusText}>{item.status.replace('_', ' ')}</Text>
@@ -24,18 +26,18 @@ const JobListItem = ({ item, onPress }: { item: Shipment, onPress: () => void })
 export default function JobsScreen() {
   const { user, logout } = useAuth();
   
-  // Fetch data from our new, dedicated endpoint
-  const { data: assignedJobs, error, isLoading } = useApi<Shipment[]>('/jobs/assigned-to-me/');
+  // Fetch data from our dedicated endpoint
+  const { data: assignedJobs, error, isLoading } = useApi<ShipmentListItem[]>('/jobs/assigned-to-me/');
 
   const renderContent = () => {
     if (isLoading) {
-      return <ActivityIndicator size="large" style={{ marginTop: 20 }} />;
+      return <ActivityIndicator size="large" color="#007aff" style={{ marginTop: 20 }} />;
     }
     if (error) {
-      return <Text style={styles.errorText}>Failed to load jobs. Please try again later.</Text>;
+      return <Text style={styles.errorText}>Failed to load jobs. Please pull down to refresh.</Text>;
     }
     if (!assignedJobs || assignedJobs.length === 0) {
-      return <Text style={styles.emptyText}>You have no jobs assigned.</Text>;
+      return <Text style={styles.emptyText}>You have no jobs assigned at the moment.</Text>;
     }
 
     return (
@@ -44,10 +46,11 @@ export default function JobsScreen() {
         renderItem={({ item }) => (
           <JobListItem 
             item={item}
-            onPress={() => console.log("Navigate to job detail:", item.id)} // We'll build this next
+            onPress={() => console.log("Navigate to job detail:", item.job_id)}
           />
         )}
         keyExtractor={(item) => item.id}
+        // Add pull-to-refresh functionality later
       />
     );
   };
@@ -66,11 +69,11 @@ export default function JobsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0f0f7' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10 },
   title: { fontSize: 24, fontWeight: 'bold' },
-  subtitle: { fontSize: 20, marginBottom: 16, color: '#666', paddingHorizontal: 16 },
-  errorText: { textAlign: 'center', color: 'red', marginTop: 20 },
-  emptyText: { textAlign: 'center', color: '#666', marginTop: 20 },
+  subtitle: { fontSize: 20, marginBottom: 10, color: '#666', paddingHorizontal: 16 },
+  errorText: { textAlign: 'center', color: 'red', marginTop: 20, paddingHorizontal: 16 },
+  emptyText: { textAlign: 'center', color: '#666', marginTop: 20, paddingHorizontal: 16 },
   itemContainer: {
     backgroundColor: 'white',
     padding: 16,
@@ -83,8 +86,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  itemAddress: { fontSize: 16, fontWeight: '500' },
-  itemDate: { fontSize: 14, color: '#666', marginTop: 8 },
+  itemAddress: { fontSize: 16, fontWeight: '500', color: '#1c1c1e' },
+  itemDate: { fontSize: 14, color: '#8e8e93', marginTop: 8 },
+  itemCustomer: { fontSize: 14, color: '#3c3c43', marginTop: 4, fontStyle: 'italic' },
   statusBadge: {
     marginTop: 12,
     paddingVertical: 4,
@@ -92,9 +96,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
   },
-  statusPENDING: { backgroundColor: '#ffcc00' },
-  statusIN_TRANSIT: { backgroundColor: '#007aff' },
-  statusDELIVERED: { backgroundColor: '#34c759' },
-  statusFAILED: { backgroundColor: '#ff3b30' },
-  statusText: { color: 'white', fontWeight: 'bold', fontSize: 12 },
+  statusPENDING: { backgroundColor: '#ff9500' }, // Orange
+  statusIN_TRANSIT: { backgroundColor: '#007aff' }, // Blue
+  statusDELIVERED: { backgroundColor: '#34c759' }, // Green
+  statusFAILED: { backgroundColor: '#ff3b30' }, // Red
+  statusText: { color: 'white', fontWeight: 'bold', fontSize: 12, textTransform: 'uppercase' },
 });

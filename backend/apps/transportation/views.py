@@ -5,9 +5,14 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Vehicle, Driver, Shipment
-from .serializers import VehicleSerializer, DriverSerializer, ShipmentSerializer
+from .serializers import (
+    VehicleSerializer, 
+    DriverSerializer, 
+    ShipmentSerializer,
+    MyJobsShipmentSerializer
+)
 from .filters import ShipmentFilter 
-from core.permissions import IsDriverUser, IsAdminOrManagerUser # Import both permissions
+from core.permissions import IsDriverUser, IsAdminOrManagerUser
 
 class VehicleViewSet(viewsets.ModelViewSet):
     """
@@ -41,7 +46,6 @@ class ShipmentViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ShipmentSerializer
     
-    # Let anyone read (GET), but only managers write (POST, PUT, PATCH, DELETE)
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             self.permission_classes = [AllowAny]
@@ -53,19 +57,23 @@ class ShipmentViewSet(viewsets.ModelViewSet):
     filterset_class = ShipmentFilter
 
 
+# --- THIS IS THE FINAL, CORRECTED VIEW ---
 class MyAssignedJobsView(generics.ListAPIView):
     """
     Returns a list of shipments (jobs) assigned to the currently
     authenticated DRIVER user.
     """
-    serializer_class = ShipmentSerializer
-    permission_classes = [IsDriverUser] # This is the only permission needed.
+    serializer_class = MyJobsShipmentSerializer
+    permission_classes = [IsDriverUser] # It now uses our definitive permission class
 
     def get_queryset(self):
         """
         This view returns a list of all shipments for the
         currently authenticated user's driver profile.
-        The IsDriverUser permission ensures request.user has a driver_profile.
+        The IsDriverUser permission guarantees a Driver profile exists.
         """
-        # Because of IsDriverUser, we can be confident user.driver_profile exists.
-        return Shipment.objects.filter(driver=self.request.user.driver_profile).order_by('job__requested_pickup_date')
+        # This is the most robust and direct way to get the data.
+        # It finds shipments where the driver's related user is the current user.
+        return Shipment.objects.filter(
+            driver__user=self.request.user
+        ).select_related('job__customer').order_by('job__requested_pickup_date')
