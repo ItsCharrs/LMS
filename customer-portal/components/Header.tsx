@@ -210,7 +210,7 @@ export default function Header() {
 
           {/* Mobile Navigation Menu */}
           {isMobileMenuOpen && (
-            <div className="lg:hidden mt-3 pb-4 border-t border-white/20 pt-4 bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20">
+            <div className="lg:hidden mt-3 pb-4 border-t border-white/20 pt-4 bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl">
               <div className="flex flex-col space-y-2 p-4">
                 {backendUser && (
                   <div className="text-center text-white mb-4 p-4 bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 rounded-xl border border-white/20">
