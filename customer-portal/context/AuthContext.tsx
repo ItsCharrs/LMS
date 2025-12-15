@@ -109,6 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const emailLogin = async (email: string, password: string) => {
     setLoading(true);
     try {
+      const auth = getFirebaseAuth();
       if (!auth) throw new Error('Firebase auth not initialized');
       const result = await signInWithEmailAndPassword(auth, email, password);
       if (result.user) {
