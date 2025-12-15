@@ -71,7 +71,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           delete apiClient.defaults.headers.common['Authorization'];
           setBackendUser(null);
         }
-      });
+      }) : () => { };
+
 
       setLoading(false);
       return () => unsubscribe();
