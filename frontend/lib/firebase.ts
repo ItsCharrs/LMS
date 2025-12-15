@@ -12,6 +12,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Debug: Check if environment variables are loaded
+console.log('🔥 Firebase Config Check:', {
+  hasApiKey: !!firebaseConfig.apiKey,
+  hasAuthDomain: !!firebaseConfig.authDomain,
+  hasProjectId: !!firebaseConfig.projectId,
+  apiKeyLength: firebaseConfig.apiKey?.length || 0
+});
+
 // Lazy initialization - only initialize when needed
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
