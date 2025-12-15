@@ -1,4 +1,5 @@
 // customer-portal/app/layout.tsx
+"use client";
 
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
@@ -9,32 +10,29 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
 // <-- ADD THIS IMPORT -->
-import { AuthProvider } from "@/context/AuthContext"; 
+import { AuthProvider } from "@/context/AuthContext";
 
-const manrope = Manrope({ 
-  subsets: ["latin"], 
+const manrope = Manrope({
+  subsets: ["latin"],
   display: "swap",
   weight: ['400', '500', '600', '700', '800']
 });
 
-export const metadata: Metadata = {
-  title: "LogiPro | Premium Logistics Services",
-  description: "Seamless, reliable, and professional moving and delivery solutions.",
-};
+// Metadata moved to app/head.tsx or individual pages since this is now a client component
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode; 
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en">
       <body className={manrope.className}>
-        
+
         {/* <-- WRAP THE CONTENT WITH AuthProvider --> */}
-        <AuthProvider> 
+        <AuthProvider>
           <div className="flex flex-col min-h-screen">
-            
+
             <Header />
 
             <main className="flex-grow">
@@ -46,7 +44,7 @@ export default function RootLayout({
           </div>
         </AuthProvider>
         {/* <-- AuthProvider end --> */}
-        
+
         <Toaster position="top-center" />
       </body>
     </html>
