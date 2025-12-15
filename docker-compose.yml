@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: logipro_backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    command: python manage.py runserver 0.0.0.0:8000
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: logipro_frontend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    environment:
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  customer-portal:
+    build:
+      context: ./customer-portal
+    container_name: logipro_customer_portal
+    volumes:
+      - ./customer-portal:/app
+      - /app/node_modules
+    ports:
+      - "3001:3001"
+    environment:
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - backend
+    restart: unless-stopped
