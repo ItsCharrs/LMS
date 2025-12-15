@@ -1,9 +1,0 @@
-[build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile"
-
-[deploy]
-startCommand = "gunicorn --chdir backend logipro_backend.wsgi:application"
-
-
-
