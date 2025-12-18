@@ -30,7 +30,7 @@ export default function DashboardLayout({
     const pathname = usePathname();
 
     return (
-        <div className="min-h-screen bg-gray-50 pt-20">
+        <div className="min-h-screen bg-muted/20 pt-20">
             {/* Top Header removed in favor of global Header */}
 
 
@@ -38,7 +38,7 @@ export default function DashboardLayout({
                 <div className="grid lg:grid-cols-[240px_1fr] gap-8">
                     {/* Sidebar Navigation */}
                     <aside className="hidden lg:block">
-                        <nav className="bg-white rounded-xl border border-gray-200 p-4 sticky top-24">
+                        <nav className="bg-card rounded-xl border border-border p-4 sticky top-24 shadow-sm">
                             <ul className="space-y-1">
                                 {navigation.map((item) => {
                                     const Icon = item.icon;
@@ -51,11 +51,11 @@ export default function DashboardLayout({
                                                 className={cn(
                                                     'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
                                                     isActive
-                                                        ? 'bg-blue-50 text-blue-700 font-semibold'
-                                                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                                                        ? 'bg-primary/10 text-primary font-semibold'
+                                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
-                                                <Icon className={cn('h-5 w-5', isActive ? 'text-blue-600' : 'text-gray-500')} />
+                                                <Icon className={cn('h-5 w-5', isActive ? 'text-primary' : 'text-muted-foreground')} />
                                                 {item.name}
                                             </Link>
                                         </li>
@@ -73,7 +73,7 @@ export default function DashboardLayout({
             </div>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
                 <div className="grid grid-cols-5 gap-1 p-2">
                     {navigation.map((item) => {
                         const Icon = item.icon;
@@ -86,8 +86,8 @@ export default function DashboardLayout({
                                 className={cn(
                                     'flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors',
                                     isActive
-                                        ? 'text-blue-600 bg-blue-50'
-                                        : 'text-gray-600 hover:bg-gray-50'
+                                        ? 'text-primary bg-primary/10'
+                                        : 'text-muted-foreground hover:bg-muted'
                                 )}
                             >
                                 <Icon className="h-5 w-5" />

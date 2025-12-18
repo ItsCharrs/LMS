@@ -11,6 +11,7 @@ import Footer from "@/components/Footer";
 
 // <-- ADD THIS IMPORT -->
 import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const manrope = Manrope({
   subsets: ["latin"],
@@ -26,26 +27,32 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={manrope.className}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* <-- WRAP THE CONTENT WITH AuthProvider --> */}
+          <AuthProvider>
+            <div className="flex flex-col min-h-screen">
 
-        {/* <-- WRAP THE CONTENT WITH AuthProvider --> */}
-        <AuthProvider>
-          <div className="flex flex-col min-h-screen">
+              <Header />
 
-            <Header />
+              <main className="flex-grow">
+                {children}
+              </main>
 
-            <main className="flex-grow">
-              {children}
-            </main>
+              <Footer />
 
-            <Footer />
+            </div>
+          </AuthProvider>
+          {/* <-- AuthProvider end --> */}
 
-          </div>
-        </AuthProvider>
-        {/* <-- AuthProvider end --> */}
-
-        <Toaster position="top-center" />
+          <Toaster position="top-center" />
+        </ThemeProvider>
       </body>
     </html>
   );
