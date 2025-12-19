@@ -28,9 +28,9 @@ function extractData<T>(data: T[] | PaginatedResponse<T> | null): T[] {
 }
 
 // Reusable sub-component for info cards
-const InfoCard = ({ title, children, icon: Icon }: { 
-  title: string; 
-  children: React.ReactNode; 
+const InfoCard = ({ title, children, icon: Icon }: {
+  title: string;
+  children: React.ReactNode;
   icon?: LucideIcon;
 }) => (
   <div className="bg-white dark:bg-gray-800 p-6 shadow rounded-lg border border-gray-200 dark:border-gray-700">
@@ -43,9 +43,9 @@ const InfoCard = ({ title, children, icon: Icon }: {
 );
 
 // Reusable sub-component for rows within info cards
-const InfoRow = ({ label, value, icon: Icon }: { 
-  label: string; 
-  value: React.ReactNode; 
+const InfoRow = ({ label, value, icon: Icon }: {
+  label: string;
+  value: React.ReactNode;
   icon?: LucideIcon;
 }) => (
   <div className="flex justify-between items-start text-sm">
@@ -69,7 +69,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     DELIVERED: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700",
     FAILED: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700",
   };
-  
+
   const statusLabels: Record<StatusType, string> = {
     PENDING: "Pending",
     ASSIGNED: "Assigned",
@@ -95,7 +95,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 export default function JobDetailPage() {
   const params = useParams();
   const jobId = params.id as string;
-  
+
   // Data fetching hooks
   const { data: job, error: jobError, isLoading: jobLoading, mutate: mutateJob } = useApi<Job>(jobId ? `/jobs/${jobId}/` : null);
   const { data: shipmentsResponse, error: shipmentError, isLoading: shipmentLoading, mutate: mutateShipments } = useApi<ShipmentsResponse>(jobId ? `/transportation/shipments/?job_id=${jobId}` : null);
@@ -116,7 +116,7 @@ export default function JobDetailPage() {
   // Derived state
   const currentShipment = shipments && shipments.length > 0 ? shipments[0] : null;
   const isAssigned = !!(currentShipment && currentShipment.driver && currentShipment.vehicle);
-  const canEditAssignment = currentShipment && 
+  const canEditAssignment = currentShipment &&
     (currentShipment.status === 'PENDING' || currentShipment.status === 'ASSIGNED');
 
   // Sync form state with fetched data
@@ -129,7 +129,7 @@ export default function JobDetailPage() {
       setSelectedVehicleId("none");
     }
     // Auto-enter edit mode if unassigned
-    setIsEditing(!isAssigned); 
+    setIsEditing(!isAssigned);
   }, [currentShipment, isAssigned]);
 
   // Handler for assigning job
@@ -138,9 +138,9 @@ export default function JobDetailPage() {
       toast.error("Job ID not found.");
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
       // Convert "none" to null for the backend
       const driverIdPayload = selectedDriverId === "none" ? null : selectedDriverId;
@@ -162,7 +162,7 @@ export default function JobDetailPage() {
           status: (driverIdPayload && vehicleIdPayload) ? 'ASSIGNED' : 'PENDING',
         });
       }
-      
+
       toast.success("Assignment updated successfully!");
       setIsEditing(false);
       mutateJob();
@@ -170,7 +170,7 @@ export default function JobDetailPage() {
     } catch (err: unknown) {
       console.error("Failed to update assignment:", err);
       let errorMessage = "Failed to update assignment.";
-      
+
       if (err instanceof AxiosError) {
         if (err.response?.data?.detail) {
           errorMessage = err.response.data.detail;
@@ -178,7 +178,7 @@ export default function JobDetailPage() {
           errorMessage = err.response.data.error;
         }
       }
-      
+
       toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -188,7 +188,7 @@ export default function JobDetailPage() {
   // Handler for marking job as delivered
   const handleMarkDelivered = async () => {
     if (!currentShipment) return;
-    
+
     setIsSubmitting(true);
     try {
       await apiClient.patch(`/transportation/shipments/${currentShipment.id}/`, {
@@ -208,7 +208,7 @@ export default function JobDetailPage() {
   // Handler for marking job as failed
   const handleMarkFailed = async () => {
     if (!currentShipment) return;
-    
+
     setIsSubmitting(true);
     try {
       await apiClient.patch(`/transportation/shipments/${currentShipment.id}/`, {
@@ -305,7 +305,7 @@ export default function JobDetailPage() {
               <InfoRow label="Contact" value={job.pickup_contact_person} icon={User} />
               <InfoRow label="Phone" value={job.pickup_contact_phone} icon={Phone} />
             </InfoCard>
-            
+
             <InfoCard title="Delivery Details" icon={MapPin}>
               <InfoRow label="Address" value={`${job.delivery_address}, ${job.delivery_city}`} />
               <InfoRow label="Contact" value={job.delivery_contact_person} icon={User} />
@@ -330,12 +330,12 @@ export default function JobDetailPage() {
                     <div className="space-y-3">
                       <InfoRow label="Status" value={<StatusBadge status={currentShipment.status} />} />
                       <InfoRow label="Driver" value={
-                        currentShipment.driver 
+                        currentShipment.driver
                           ? `${currentShipment.driver.user.first_name} ${currentShipment.driver.user.last_name}`
                           : "Not assigned"
                       } icon={User} />
                       <InfoRow label="Vehicle" value={
-                        currentShipment.vehicle 
+                        currentShipment.vehicle
                           ? `${currentShipment.vehicle.license_plate} (${currentShipment.vehicle.make} ${currentShipment.vehicle.model})`
                           : "Not assigned"
                       } icon={Truck} />
@@ -344,8 +344,8 @@ export default function JobDetailPage() {
                     {/* Action Buttons */}
                     <div className="space-y-2">
                       {canEditAssignment && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                           onClick={() => setIsEditing(true)}
                         >
@@ -353,19 +353,19 @@ export default function JobDetailPage() {
                           Edit Assignment
                         </Button>
                       )}
-                      
+
                       {currentShipment.status === 'ASSIGNED' && (
                         <div className="grid grid-cols-2 gap-2">
-                          <Button 
-                            onClick={handleMarkDelivered} 
+                          <Button
+                            onClick={handleMarkDelivered}
                             disabled={isSubmitting}
                             className="bg-green-600 hover:bg-green-700 text-white"
                           >
                             <CheckCircle className="w-4 h-4 mr-2" />
                             Delivered
                           </Button>
-                          <Button 
-                            onClick={handleMarkFailed} 
+                          <Button
+                            onClick={handleMarkFailed}
                             disabled={isSubmitting}
                             variant="destructive"
                           >
@@ -378,8 +378,8 @@ export default function JobDetailPage() {
                       {(currentShipment.status === 'DELIVERED' || currentShipment.status === 'FAILED') && (
                         <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-md border border-gray-200 dark:border-gray-600">
                           <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                            {currentShipment.status === 'DELIVERED' 
-                              ? '✅ Delivery completed successfully' 
+                            {currentShipment.status === 'DELIVERED'
+                              ? '✅ Delivery completed successfully'
                               : '❌ Delivery failed - requires attention'
                             }
                           </p>
@@ -428,9 +428,9 @@ export default function JobDetailPage() {
                       <Button variant="ghost" className="flex-1" onClick={() => setIsEditing(false)}>
                         Cancel
                       </Button>
-                      <Button 
-                        onClick={handleAssign} 
-                        disabled={isSubmitting} 
+                      <Button
+                        onClick={handleAssign}
+                        disabled={isSubmitting}
                         className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
                       >
                         {isSubmitting ? "Saving..." : "Save Assignment"}
@@ -445,7 +445,7 @@ export default function JobDetailPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
                   This job is not yet assigned to a driver and vehicle.
                 </p>
-                
+
                 <div>
                   <label className="text-sm font-medium mb-2 block text-gray-700 dark:text-gray-300">Driver</label>
                   <Select onValueChange={setSelectedDriverId} value={selectedDriverId}>
@@ -480,9 +480,9 @@ export default function JobDetailPage() {
                   </Select>
                 </div>
 
-                <Button 
-                  onClick={handleAssign} 
-                  disabled={isSubmitting} 
+                <Button
+                  onClick={handleAssign}
+                  disabled={isSubmitting}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
                   {isSubmitting ? "Creating..." : "Create Assignment"}
@@ -490,6 +490,34 @@ export default function JobDetailPage() {
               </div>
             )}
           </InfoCard>
+
+          {/* Proof of Delivery Image Section */}
+          {(currentShipment?.proof_of_delivery_image || job.proof_of_delivery_image) && (
+            <InfoCard title="Proof of Delivery" icon={CheckCircle}>
+              <div className="relative w-full h-64 bg-gray-100 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <img
+                  src={currentShipment?.proof_of_delivery_image || job.proof_of_delivery_image || ''}
+                  alt="Proof of Delivery"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+              </div>
+              <div className="flex justify-between items-center mt-2">
+                <p className="text-sm text-gray-500">Uploaded by driver</p>
+                <a
+                  href={currentShipment?.proof_of_delivery_image || job.proof_of_delivery_image || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:underline"
+                >
+                  View Full Size
+                </a>
+              </div>
+            </InfoCard>
+          )}
+
         </div>
       </div>
     </div>

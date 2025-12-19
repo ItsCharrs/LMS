@@ -2,6 +2,14 @@
 
 from django.contrib import admin
 from .models import Job, JobTimeline
+from apps.transportation.models import Shipment
+
+class ShipmentInline(admin.StackedInline):
+    model = Shipment
+    extra = 0 # One-to-One, so no extra needed typically
+    can_delete = False
+    readonly_fields = ('proof_of_delivery_image',) # View POD in admin
+    fields = ('driver', 'vehicle', 'status', 'proof_of_delivery_image')
 
 class JobTimelineInline(admin.TabularInline):
     model = JobTimeline
@@ -20,7 +28,7 @@ class JobAdmin(admin.ModelAdmin):
     """
     Admin configuration for the Job model.
     """
-    inlines = [JobTimelineInline]  # View timeline directly in Job
+    inlines = [ShipmentInline, JobTimelineInline]  # Add ShipmentInline
 
     list_display = (
         'id', 

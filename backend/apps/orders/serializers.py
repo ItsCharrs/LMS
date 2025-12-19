@@ -105,7 +105,8 @@ class DriverJobSerializer(serializers.ModelSerializer):
     customer_name = serializers.CharField(source='customer.get_full_name', read_only=True)
     customer_phone = serializers.CharField(source='customer.phone_number', read_only=True)
     status = serializers.SerializerMethodField()
-    proof_of_delivery_image = serializers.ImageField(read_only=True)  # Add this field
+    proof_of_delivery_image = serializers.SerializerMethodField()
+    assigned_driver = serializers.SerializerMethodField()
     
     class Meta:
         model = Job
@@ -125,13 +126,26 @@ class DriverJobSerializer(serializers.ModelSerializer):
             'requested_pickup_date',
             'customer_name',
             'customer_phone',
-            'proof_of_delivery_image', # Add this field
+            'proof_of_delivery_image',
+            'assigned_driver',
         ]
 
     def get_status(self, obj):
         # Helper to get status from current timeline
         timeline = obj.timeline.filter(is_current=True).first()
         return timeline.status if timeline else 'PENDING'
+
+    def get_proof_of_delivery_image(self, obj):
+        # Safely access the shipment's POD image
+        if hasattr(obj, 'shipment') and obj.shipment.proof_of_delivery_image:
+            return obj.shipment.proof_of_delivery_image.url
+        return None
+
+    def get_assigned_driver(self, obj):
+        # Safely access the shipment's driver name
+        if hasattr(obj, 'shipment') and obj.shipment.driver:
+            return obj.shipment.driver.user.get_full_name()
+        return None
 
 
 class DriverJobUpdateSerializer(serializers.Serializer):

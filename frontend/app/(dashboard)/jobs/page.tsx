@@ -5,29 +5,29 @@ import { useState } from "react";
 import Link from "next/link";
 import { useApi } from "@/hooks/useApi";
 import { Job, PaginatedResponse } from "@/types";
-import JobForm from "./JobForm"; 
+import JobForm from "./JobForm";
 import { Button } from "@/components/ui/button";
-import { 
-    Dialog, 
-    DialogContent, 
-    DialogDescription,
-    DialogHeader, 
-    DialogTitle 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
 } from "@/components/ui/dialog";
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "react-hot-toast";
-import { Plus, Eye, Calendar, User, Package } from "lucide-react";
+import { Plus, Eye, Calendar, User, Package, Truck } from "lucide-react";
 
 // Define the possible response types for jobs endpoint
-type JobsResponse = 
+type JobsResponse =
   | Job[]
   | PaginatedResponse<Job>;
 
@@ -51,7 +51,7 @@ const StatusBadge = ({ status }: { status: Job['status'] }) => {
     DELIVERED: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-700",
     FAILED: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-700",
   };
-  
+
   const statusLabels: Record<StatusType, string> = {
     PENDING: "Pending",
     ASSIGNED: "Assigned",
@@ -61,8 +61,8 @@ const StatusBadge = ({ status }: { status: Job['status'] }) => {
   };
 
   return (
-    <Badge 
-      variant="outline" 
+    <Badge
+      variant="outline"
       className={`${statusStyles[status]} border font-medium`}
     >
       {statusLabels[status]}
@@ -76,7 +76,7 @@ export default function JobsPage() {
 
   // Extract jobs safely
   const jobs = extractJobs(jobsResponse);
-  
+
   const handleFormSuccess = () => {
     toast.success("Job created successfully!");
     setModalOpen(false);
@@ -109,8 +109,8 @@ export default function JobsPage() {
             )}
           </p>
         </div>
-        <Button 
-          onClick={() => setModalOpen(true)} 
+        <Button
+          onClick={() => setModalOpen(true)}
           className="bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -171,7 +171,7 @@ export default function JobsPage() {
           </div>
         </div>
       </div>
-      
+
       {/* Jobs Table */}
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg border border-gray-200 dark:border-gray-700">
         <Table>
@@ -180,6 +180,7 @@ export default function JobsPage() {
               <TableHead className="text-gray-900 dark:text-white font-semibold">Job ID</TableHead>
               <TableHead className="text-gray-900 dark:text-white font-semibold">Customer</TableHead>
               <TableHead className="text-gray-900 dark:text-white font-semibold">Service Type</TableHead>
+              <TableHead className="text-gray-900 dark:text-white font-semibold">Assigned Driver</TableHead>
               <TableHead className="text-gray-900 dark:text-white font-semibold">Pickup Date</TableHead>
               <TableHead className="text-gray-900 dark:text-white font-semibold">Status</TableHead>
               <TableHead className="text-right text-gray-900 dark:text-white font-semibold">Actions</TableHead>
@@ -219,6 +220,18 @@ export default function JobsPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
+                      {job.assigned_driver ? (
+                        <>
+                          <Truck className="w-4 h-4 text-emerald-600" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{job.assigned_driver}</span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-gray-400 italic">Unassigned</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
                       <Calendar className="w-4 h-4 text-gray-400" />
                       <span className="text-sm text-gray-700 dark:text-gray-300">
                         {new Date(job.requested_pickup_date).toLocaleDateString()}
@@ -230,9 +243,9 @@ export default function JobsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <Link href={`/jobs/${job.id}`} passHref>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="border-emerald-200 dark:border-emerald-700 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                       >
                         <Eye className="w-4 h-4 mr-1" />
@@ -253,7 +266,7 @@ export default function JobsPage() {
                         Get started by creating your first transportation job.
                       </p>
                     </div>
-                    <Button 
+                    <Button
                       onClick={() => setModalOpen(true)}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white"
                     >

@@ -14,12 +14,11 @@ class DriverJobViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        # Filter jobs assigned to the current driver
-        # Note: We need to add an 'assigned_driver' field to Job model first
-        # For now, we'll return all jobs if user is a driver for testing
+        # Filter jobs assigned to the current driver via Shipment
         user = self.request.user
         if user.role == User.Role.DRIVER:
-             return Job.objects.all().order_by('-created_at') # Temporary until assignment field exists
+             # Ensure the user has a Driver profile and filter shipments
+             return Job.objects.filter(shipment__driver__user=user).select_related('shipment').order_by('-created_at')
         return Job.objects.none()
 
     @action(detail=True, methods=['post'], serializer_class=DriverJobUpdateSerializer)
@@ -42,6 +41,14 @@ class DriverJobViewSet(viewsets.ReadOnlyModelViewSet):
                 is_current=True
             )
             
+            # Auto-update Shipment status if applicable
+            if hasattr(job, 'shipment'):
+                if new_status == 'IN_TRANSIT':
+                    job.shipment.status = 'IN_TRANSIT'
+                elif new_status == 'DELIVERED':
+                    job.shipment.status = 'DELIVERED'
+                job.shipment.save()
+            
             return Response({'status': 'success', 'new_status': new_status})
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -49,15 +56,15 @@ class DriverJobViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=True, methods=['post'], url_path='upload-pod')
     def upload_pod(self, request, pk=None):
         job = self.get_object()
-        # Assume job model has proof_of_delivery_image field (we might need to add it to model if missing)
-        # Checking model... Job model likely doesn't have it yet based on previous sessions.
-        # I'll rely on the existing job model structure. If it's missing, I'll update it.
         
+        if not hasattr(job, 'shipment'):
+             return Response({'error': 'No shipment associated with this job'}, status=status.HTTP_404_NOT_FOUND)
+
         image = request.FILES.get('proof_of_delivery_image')
         if not image:
              return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
              
-        job.proof_of_delivery_image = image
-        job.save()
+        job.shipment.proof_of_delivery_image = image
+        job.shipment.save()
         
-        return Response({'status': 'success', 'image_url': job.proof_of_delivery_image.url if job.proof_of_delivery_image else ''})
+        return Response({'status': 'success', 'image_url': job.shipment.proof_of_delivery_image.url if job.shipment.proof_of_delivery_image else ''})

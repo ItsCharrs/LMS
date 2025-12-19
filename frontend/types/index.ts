@@ -52,6 +52,8 @@ export interface Job {
   updated_at: string;
   customer_name?: string;  // Added for serialized data
   customer_email?: string; // Added for serialized data
+  proof_of_delivery_image?: string | null;
+  assigned_driver?: string | null;
 }
 
 export interface Shipment {
