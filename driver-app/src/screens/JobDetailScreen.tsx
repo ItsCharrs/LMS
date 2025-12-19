@@ -38,7 +38,7 @@ export default function JobDetailScreen() {
   const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
 
   // Type assertion to include all statuses
-  const status = job?.status as 'PENDING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | undefined;
+  const status = job?.status as 'PENDING' | 'PICKED_UP' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | undefined;
 
   const updateStatus = async (newStatus: string) => {
     if (isUpdatingStatus) return;

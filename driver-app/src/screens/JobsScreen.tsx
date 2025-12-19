@@ -6,22 +6,12 @@ import { useApi } from '../hooks/useApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
+import { ShipmentListItem } from '../types';
 
 // Type for our navigation prop
 type JobsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Jobs'>;
 
-// Type matching the Backend "DriverJobSerializer"
-interface Job {
-  id: string; // This is the ID
-  pickup_city: string; // The serializer returns cities
-  delivery_city: string;
-  pickup_address: string;
-  delivery_address: string;
-  requested_pickup_date: string;
-  customer_name: string;
-  status: 'PENDING' | 'PICKED_UP' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
-  cargo_description: string;
-}
+
 
 const JobListItem = ({ item, onPress }: { item: ShipmentListItem, onPress: () => void }) => (
   <TouchableOpacity style={styles.itemContainer} onPress={onPress}>

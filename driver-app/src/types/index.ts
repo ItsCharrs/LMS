@@ -46,6 +46,7 @@ export interface JobDetail {
   id: string;
   service_type: string;
   status: ShipmentStatus;
+  customer_name: string;
   cargo_description: string;
   pickup_address: string;
   pickup_city: string;
@@ -60,3 +61,13 @@ export interface JobDetail {
   updated_at?: string;
   proof_of_delivery_image?: string | null;
 }
+
+export interface BackendUser {
+  id: number | string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  role: 'DRIVER' | 'CUSTOMER' | 'ADMIN' | string;
+}
+
+export type Job = JobDetail;
