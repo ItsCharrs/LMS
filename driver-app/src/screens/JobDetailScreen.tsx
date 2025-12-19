@@ -10,8 +10,11 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  TouchableOpacity
+  TouchableOpacity,
+  Linking,
+  Platform
 } from 'react-native';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { launchCameraAsync, requestCameraPermissionsAsync, PermissionStatus } from 'expo-image-picker';
 import { RootStackParamList } from '../navigation/AppNavigator';
@@ -193,19 +196,73 @@ export default function JobDetailScreen() {
             <View style={styles.routeDot}>
               <View style={styles.dot} />
               <View style={styles.verticalLine} />
+              <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
             </View>
             <View style={styles.routeAddresses}>
               <View style={styles.addressSection}>
                 <Text style={styles.addressLabel}>PICKUP LOCATION</Text>
                 <Text style={styles.addressText}>{job.pickup_address}, {job.pickup_city}</Text>
-                <InfoBlock label="Contact" value={job.pickup_contact_person} />
-                <InfoBlock label="Phone" value={job.pickup_contact_phone} />
+
+                <View style={styles.contactRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.contactName}>{job.pickup_contact_person}</Text>
+                    <Text style={styles.contactPhone}>{job.pickup_contact_phone}</Text>
+                  </View>
+                  <View style={styles.contactActions}>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => Linking.openURL(`tel:${job.pickup_contact_phone}`)}
+                    >
+                      <Ionicons name="call" size={20} color="#3B82F6" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => {
+                        const query = encodeURIComponent(`${job.pickup_address}, ${job.pickup_city}`);
+                        const url = Platform.select({
+                          ios: `maps:0,0?q=${query}`,
+                          android: `geo:0,0?q=${query}`
+                        });
+                        Linking.openURL(url!);
+                      }}
+                    >
+                      <Ionicons name="map" size={20} color="#3B82F6" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
+
               <View style={styles.addressSection}>
                 <Text style={styles.addressLabel}>DELIVERY LOCATION</Text>
                 <Text style={styles.addressText}>{job.delivery_address}, {job.delivery_city}</Text>
-                <InfoBlock label="Contact" value={job.delivery_contact_person} />
-                <InfoBlock label="Phone" value={job.delivery_contact_phone} />
+
+                <View style={styles.contactRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.contactName}>{job.delivery_contact_person}</Text>
+                    <Text style={styles.contactPhone}>{job.delivery_contact_phone}</Text>
+                  </View>
+                  <View style={styles.contactActions}>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => Linking.openURL(`tel:${job.delivery_contact_phone}`)}
+                    >
+                      <Ionicons name="call" size={20} color="#10B981" />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.iconButton}
+                      onPress={() => {
+                        const query = encodeURIComponent(`${job.delivery_address}, ${job.delivery_city}`);
+                        const url = Platform.select({
+                          ios: `maps:0,0?q=${query}`,
+                          android: `geo:0,0?q=${query}`
+                        });
+                        Linking.openURL(url!);
+                      }}
+                    >
+                      <Ionicons name="map" size={20} color="#10B981" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
@@ -686,6 +743,45 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#991b1b',
     textAlign: 'center',
+  },
+  // Contact & Map Styles
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  contactName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 2,
+  },
+  contactPhone: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  contactActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   footerSpacer: {
     height: 24,
