@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   Text,
   StatusBar,
-  Platform
+  Platform,
+  AppState
 } from 'react-native';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -44,11 +45,11 @@ function StainedGlassTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 0) }]}>
+    <View style={styles.tabBarContainer}>
       <BlurView
         intensity={60}
         tint="dark"
-        style={styles.tabBar}
+        style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 0) }]}
       >
         <View style={styles.tabBarTopBorder} />
 
@@ -152,17 +153,24 @@ function MainTabNavigator() {
 function MainStack() {
   const { user, isLoading } = useAuth();
 
-  // Hide Android navigation bar
+  // Hide Android navigation bar - Reinforced
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      NavigationBar.setVisibilityAsync("hidden");
-      // @ts-ignore
-      NavigationBar.setBehaviorAsync("sticky-immersive");
-      NavigationBar.setPositionAsync("absolute");
-
-      // Optional: Change navigation bar color
-      NavigationBar.setBackgroundColorAsync(StainedGlassTheme.colors.deepPurple);
+    async function setImmersive() {
+      if (Platform.OS === 'android') {
+        await NavigationBar.setVisibilityAsync("hidden");
+        await NavigationBar.setBehaviorAsync("overlay-swipe"); // Using overlay-swipe for better persistent hidden state
+        await NavigationBar.setBackgroundColorAsync(StainedGlassTheme.colors.deepPurple);
+      }
     }
+
+    setImmersive();
+
+    // Re-apply on app focus to ensure it stays hidden
+    const subscription = AppState.addEventListener("change", nextAppState => {
+      if (nextAppState === "active") {
+        setImmersive();
+      }
+    });
 
     // Show immersive mode
     StatusBar.setTranslucent(true);
@@ -170,9 +178,9 @@ function MainStack() {
     StatusBar.setBarStyle('light-content');
 
     return () => {
-      // Restore navigation bar when component unmounts
+      subscription.remove();
       if (Platform.OS === 'android') {
-        NavigationBar.setVisibilityAsync("visible");
+        // Optionally restore, but for this app we want it immersive
       }
     };
   }, []);
@@ -269,11 +277,12 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 1000,
+    backgroundColor: StainedGlassTheme.colors.deepPurple,
   },
   tabBar: {
     flexDirection: 'column',
-    borderRadius: 0, // Changed to 0 for full width
-    marginHorizontal: 0, // No margin for full width
+    borderRadius: 0,
+    marginHorizontal: 0,
     marginBottom: 0,
     overflow: 'hidden',
     borderTopWidth: 1,
@@ -287,7 +296,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 10,
     elevation: 15,
-    minHeight: 70,
+    minHeight: 50, // Reduced from 55
   },
   tabBarTopBorder: {
     height: 1,
@@ -300,14 +309,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 2, // Reduced from 6
     paddingHorizontal: 4,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4, // Reduced from 8
     position: 'relative',
   },
   activeIndicator: {

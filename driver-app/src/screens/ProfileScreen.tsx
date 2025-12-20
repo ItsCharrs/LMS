@@ -14,6 +14,8 @@ import { ScreenWrapper } from '../components/ScreenWrapper';
 import { StainedGlassCard } from '../components/StainedGlassCard';
 import { StainedGlassTheme, Typography, Spacing, BorderRadius } from '../styles/globalStyles';
 import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
+import * as Updates from 'expo-updates';
+import { Alert } from 'react-native';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
@@ -148,6 +150,44 @@ export default function ProfileScreen() {
                             <Text style={styles.menuSubtext}>Licenses, insurance & permits</Text>
                         </View>
                         <Ionicons name="chevron-forward" size={20} color={StainedGlassTheme.colors.goldLight} />
+                    </TouchableOpacity>
+                </StainedGlassCard>
+
+                {/* App Info & Updates */}
+                <StainedGlassCard style={styles.menuCard}>
+                    <Text style={styles.menuTitle}>App Info</Text>
+
+                    <View style={styles.appInfoContainer}>
+                        <View style={styles.appInfoRow}>
+                            <Text style={styles.appInfoLabel}>Version</Text>
+                            <Text style={styles.appInfoValue}>1.0.0 (Build {Updates.runtimeVersion})</Text>
+                        </View>
+                        <View style={styles.appInfoRow}>
+                            <Text style={styles.appInfoLabel}>Channel</Text>
+                            <Text style={styles.appInfoValue}>{Updates.channel || 'development'}</Text>
+                        </View>
+                    </View>
+
+                    <TouchableOpacity
+                        style={styles.updateButton}
+                        onPress={async () => {
+                            try {
+                                const update = await Updates.checkForUpdateAsync();
+                                if (update.isAvailable) {
+                                    await Updates.fetchUpdateAsync();
+                                    Alert.alert('Update Downloaded', 'The app will now restart to apply the update.', [
+                                        { text: 'Restart', onPress: () => Updates.reloadAsync() }
+                                    ]);
+                                } else {
+                                    Alert.alert('Up to Date', 'You are using the latest version.');
+                                }
+                            } catch (e) {
+                                Alert.alert('Error', 'Failed to check for updates. ' + (e as Error).message);
+                            }
+                        }}
+                    >
+                        <Ionicons name="cloud-download-outline" size={20} color={StainedGlassTheme.colors.parchment} />
+                        <Text style={styles.updateButtonText}>Check for Updates</Text>
                     </TouchableOpacity>
                 </StainedGlassCard>
 
@@ -411,5 +451,39 @@ const styles = StyleSheet.create({
         opacity: 0.7,
         textAlign: 'center',
         fontStyle: 'italic',
+    },
+    appInfoContainer: {
+        marginBottom: Spacing.md,
+        paddingHorizontal: Spacing.sm,
+    },
+    appInfoRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: Spacing.xs,
+    },
+    appInfoLabel: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.parchmentLight,
+    },
+    appInfoValue: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.gold,
+        fontWeight: '600',
+    },
+    updateButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'rgba(59, 130, 246, 0.2)', // Blue tint
+        paddingVertical: 12,
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(59, 130, 246, 0.4)',
+    },
+    updateButtonText: {
+        marginLeft: 8,
+        color: StainedGlassTheme.colors.parchment,
+        fontWeight: '600',
+        fontSize: 14,
     },
 });

@@ -19,6 +19,7 @@ import { ShipmentListItem } from '../types';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { StainedGlassCard } from '../components/StainedGlassCard';
 import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
+import { PremiumCarLoader } from '../components/PremiumCarLoader';
 import { StainedGlassTheme, Typography, Spacing, BorderRadius } from '../styles/globalStyles';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 
@@ -279,10 +280,9 @@ export default function JobsScreen() {
               </Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Ionicons name="log-out-outline" size={18} color={StainedGlassTheme.colors.parchmentLight} />
-            <Text style={styles.logoutText}>Log Out</Text>
-          </TouchableOpacity>
+          <View style={{ marginRight: Spacing.sm }}>
+            <PremiumCarLoader />
+          </View>
         </View>
       </View>
 
