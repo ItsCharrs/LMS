@@ -49,6 +49,7 @@ class JobSerializer(serializers.ModelSerializer):
         model = Job
         fields = [
             'id',
+            'job_number',
             'customer',
             'customer_id',
             'status', # The status now comes from the current timeline entry
@@ -68,7 +69,7 @@ class JobSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['status', 'estimated_delivery', 'timeline', 'created_at', 'updated_at']
+        read_only_fields = ['status', 'estimated_delivery', 'timeline', 'created_at', 'updated_at', 'job_number']
 
     def get_status(self, obj):
         """
@@ -107,11 +108,14 @@ class DriverJobSerializer(serializers.ModelSerializer):
     status = serializers.SerializerMethodField()
     proof_of_delivery_image = serializers.SerializerMethodField()
     assigned_driver = serializers.SerializerMethodField()
+    # Alias job_number to job_id to match frontend JobDetail interface
+    job_id = serializers.IntegerField(source='job_number', read_only=True)
     
     class Meta:
         model = Job
         fields = [
             'id',
+            'job_id',
             'status',
             'service_type',
             'cargo_description',

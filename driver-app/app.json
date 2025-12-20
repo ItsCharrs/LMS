@@ -29,13 +29,24 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.driverapp",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9db0cd3a-d8b4-453c-9b40-e7a4a2c53aa4"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     },
     "plugins": [
       "expo-secure-store",
@@ -46,6 +57,11 @@
           "cameraPermission": "The app needs access to your camera to take proof of delivery photos."
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9db0cd3a-d8b4-453c-9b40-e7a4a2c53aa4"
+      }
+    }
   }
 }

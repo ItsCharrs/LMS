@@ -282,7 +282,9 @@ export default function JobDetailPage() {
             </h1>
             <StatusBadge status={currentShipment?.status || job.status} />
           </div>
-          <p className="text-blue-600 dark:text-blue-300 mt-2">Job ID: {job.id}</p>
+          <p className="text-blue-600 dark:text-blue-300 mt-2">
+            Job Number: {job.job_number ? `#${job.job_number}` : job.id}
+          </p>
         </div>
       </div>
 

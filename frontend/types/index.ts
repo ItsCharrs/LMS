@@ -35,6 +35,7 @@ export interface Driver {
 
 export interface Job {
   id: string;
+  job_number?: number;
   customer: User; // Use User interface instead of BackendUser
   service_type: string;
   status: 'PENDING' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED';

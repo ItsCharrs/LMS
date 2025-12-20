@@ -92,7 +92,8 @@ class ShipmentAdmin(admin.ModelAdmin):
     )
     search_fields = (
         'id', 
-        'job__id', 
+        'job__id',
+        'job__job_number', # Enable search by simplified job ID 
         'driver__user__username',
         'vehicle__license_plate'
     )

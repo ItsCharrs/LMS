@@ -200,7 +200,7 @@ export default function JobsPage() {
               jobs.map((job) => (
                 <TableRow key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <TableCell className="font-mono text-sm text-gray-700 dark:text-gray-300">
-                    {job.id.substring(0, 8)}...
+                    {job.job_number ? `#${job.job_number}` : `${job.id.substring(0, 8)}...`}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">

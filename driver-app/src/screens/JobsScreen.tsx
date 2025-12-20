@@ -1,68 +1,155 @@
 // src/screens/JobsScreen.tsx
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import { useApi } from '../hooks/useApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/AppNavigator';
+import { RootStackParamList, TabParamList } from '../navigation/AppNavigator';
 import { ShipmentListItem } from '../types';
+import { ScreenBackground } from '../components/ScreenBackground';
+import { StainedGlassCard } from '../components/StainedGlassCard';
+import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
+import { StainedGlassTheme, Typography, Spacing, BorderRadius } from '../styles/globalStyles';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
-// Type for our navigation prop
-type JobsScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Jobs'>;
+// Type for our navigation prop - using any for simplicity since we navigate to both tab and stack screens
+type JobsScreenNavigationProp = any;
 
+const JobListItem = ({ item, onPress }: { item: ShipmentListItem, onPress: () => void }) => {
+  const statusConfig = getStatusConfig(item.status);
 
-
-const JobListItem = ({ item, onPress }: { item: ShipmentListItem, onPress: () => void }) => (
-  <TouchableOpacity style={styles.itemContainer} onPress={onPress}>
-    <View style={styles.itemContent}>
-      <View style={styles.itemHeader}>
-        <Text style={styles.jobId}>Job #{item.job_id}</Text>
-        <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
-          <Text style={styles.statusText}>{item.status.replace('_', ' ')}</Text>
-        </View>
-      </View>
-
-      <View style={styles.routeContainer}>
-        <View style={styles.routeDot}>
-          <View style={styles.dot} />
-          <View style={styles.verticalLine} />
-        </View>
-        <View style={styles.routeAddresses}>
-          <View style={styles.addressSection}>
-            <Text style={styles.addressLabel}>PICKUP</Text>
-            <Text style={styles.addressText} numberOfLines={2}>{item.pickup_address}</Text>
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.8}
+      style={styles.listItemTouchable}
+    >
+      <StainedGlassCard style={styles.jobCard}>
+        {/* Card Header */}
+        <View style={styles.cardHeader}>
+          <View style={styles.jobIdContainer}>
+            <Ionicons name="document-text-outline" size={16} color={StainedGlassTheme.colors.goldLight} />
+            <Text style={styles.jobId}>Job #{item.job_id}</Text>
           </View>
-          <View style={styles.addressSection}>
-            <Text style={styles.addressLabel}>DELIVERY</Text>
-            <Text style={styles.addressText} numberOfLines={2}>{item.delivery_address}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+            <Ionicons name={statusConfig.icon as any} size={12} color={statusConfig.color} />
+            <Text style={[styles.statusText, { color: statusConfig.color }]}>
+              {statusConfig.label}
+            </Text>
           </View>
         </View>
-      </View>
 
-      <View style={styles.itemFooter}>
-        <Text style={styles.itemDate}>
-          📅 {new Date(item.requested_pickup_date).toLocaleDateString()} • {new Date(item.requested_pickup_date).toLocaleTimeString()}
-        </Text>
-        <Text style={styles.itemCustomer}>👤 {item.customer_name}</Text>
-      </View>
-    </View>
-  </TouchableOpacity>
-);
+        {/* Route Visualization */}
+        <View style={styles.routeContainer}>
+          {/* Pickup Location */}
+          <View style={styles.locationRow}>
+            <View style={[styles.routeDot, styles.pickupDot]} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel}>PICKUP</Text>
+              <Text style={styles.addressText} numberOfLines={2}>
+                {item.pickup_address}
+              </Text>
+            </View>
+          </View>
 
-// Helper function to get status styles
-const getStatusStyle = (status: ShipmentListItem['status']) => {
+          {/* Route Line */}
+          <View style={styles.routeLineContainer}>
+            <View style={styles.verticalLine} />
+            <Ionicons name="arrow-down" size={16} color={StainedGlassTheme.colors.goldMedium} style={styles.routeArrow} />
+          </View>
+
+          {/* Delivery Location */}
+          <View style={styles.locationRow}>
+            <View style={[styles.routeDot, styles.deliveryDot]} />
+            <View style={styles.locationInfo}>
+              <Text style={styles.locationLabel}>DELIVERY</Text>
+              <Text style={styles.addressText} numberOfLines={2}>
+                {item.delivery_address}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Card Footer */}
+        <View style={styles.cardFooter}>
+          <View style={styles.footerRow}>
+            <View style={styles.footerItem}>
+              <Ionicons name="calendar-outline" size={14} color={StainedGlassTheme.colors.parchmentLight} />
+              <Text style={styles.footerText}>
+                {new Date(item.requested_pickup_date).toLocaleDateString()}
+              </Text>
+            </View>
+            <View style={styles.footerItem}>
+              <Ionicons name="time-outline" size={14} color={StainedGlassTheme.colors.parchmentLight} />
+              <Text style={styles.footerText}>
+                {new Date(item.requested_pickup_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.customerRow}>
+            <Ionicons name="person-outline" size={14} color={StainedGlassTheme.colors.parchmentLight} />
+            <Text style={styles.customerText}>{item.customer_name}</Text>
+          </View>
+        </View>
+
+        {/* View Details Button */}
+        <TouchableOpacity style={styles.viewDetailsButton}>
+          <Text style={styles.viewDetailsText}>View Job Details</Text>
+          <Ionicons name="chevron-forward" size={16} color={StainedGlassTheme.colors.gold} />
+        </TouchableOpacity>
+      </StainedGlassCard>
+    </TouchableOpacity>
+  );
+};
+
+// Helper function to get status config
+const getStatusConfig = (status: ShipmentListItem['status']) => {
   switch (status) {
     case 'PENDING':
-      return styles.statusPENDING;
+      return {
+        color: '#FBBF24', // Gold
+        bgColor: 'rgba(251, 191, 36, 0.15)',
+        icon: 'time-outline',
+        label: 'Pending'
+      };
     case 'IN_TRANSIT':
-      return styles.statusIN_TRANSIT;
+      return {
+        color: '#60A5FA', // Blue
+        bgColor: 'rgba(96, 165, 250, 0.15)',
+        icon: 'car-outline',
+        label: 'In Transit'
+      };
     case 'DELIVERED':
-      return styles.statusDELIVERED;
+      return {
+        color: '#34D399', // Green
+        bgColor: 'rgba(52, 211, 153, 0.15)',
+        icon: 'checkmark-circle-outline',
+        label: 'Delivered'
+      };
     case 'FAILED':
-      return styles.statusFAILED;
+      return {
+        color: '#F87171', // Red
+        bgColor: 'rgba(248, 113, 113, 0.15)',
+        icon: 'alert-circle-outline',
+        label: 'Failed'
+      };
     default:
-      return styles.statusPENDING;
+      return {
+        color: '#9CA3AF',
+        bgColor: 'rgba(156, 163, 175, 0.15)',
+        icon: 'help-circle-outline',
+        label: status.replace('_', ' ')
+      };
   }
 };
 
@@ -71,11 +158,33 @@ export default function JobsScreen() {
   const { data: assignedJobs, error, isLoading, mutate } = useApi<ShipmentListItem[]>('/transportation/drivers/me/jobs/');
   const navigation = useNavigation<JobsScreenNavigationProp>();
 
+  const getTimeBasedGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'in_transit'>('all');
+
+  // Filter to only show active jobs (not delivered)
+  const activeJobs = assignedJobs?.filter(
+    (job) => job.status === 'PENDING' || job.status === 'IN_TRANSIT'
+  ) || [];
+
+  // Apply additional filter based on selected chip
+  const filteredJobs = activeJobs.filter((job) => {
+    if (selectedFilter === 'all') return true;
+    if (selectedFilter === 'pending') return job.status === 'PENDING';
+    if (selectedFilter === 'in_transit') return job.status === 'IN_TRANSIT';
+    return true;
+  });
+
   const renderContent = () => {
     if (isLoading) {
       return (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color={StainedGlassTheme.colors.gold} />
           <Text style={styles.loadingText}>Loading your jobs...</Text>
         </View>
       );
@@ -83,36 +192,49 @@ export default function JobsScreen() {
     if (error) {
       return (
         <View style={styles.errorContainer}>
+          <View style={styles.errorIcon}>
+            <Ionicons name="alert-circle-outline" size={48} color={StainedGlassTheme.colors.goldLight} />
+          </View>
           <Text style={styles.errorText}>Failed to load jobs</Text>
           <Text style={styles.errorSubtext}>Please pull down to refresh</Text>
         </View>
       );
     }
-    if (!assignedJobs || assignedJobs.length === 0) {
+    if (!activeJobs || activeJobs.length === 0) {
       return (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📦</Text>
-          <Text style={styles.emptyTitle}>No Jobs Assigned</Text>
-          <Text style={styles.emptyText}>You're all caught up! New jobs will appear here when assigned.</Text>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="briefcase-outline" size={48} color={StainedGlassTheme.colors.goldLight} />
+          </View>
+          <Text style={styles.emptyTitle}>No Active Jobs</Text>
+          <Text style={styles.emptyText}>
+            You're all caught up! Completed jobs are in History.
+          </Text>
         </View>
       );
     }
 
     return (
       <FlatList
-        data={assignedJobs}
+        data={filteredJobs}
         renderItem={({ item }) => (
           <JobListItem
             item={item}
             onPress={() => navigation.navigate('JobDetail', {
-              jobId: item.job_id,
+              jobId: item.job_id.toString(),
               shipmentId: item.id
             })}
           />
         )}
         keyExtractor={(item) => item.id}
-        onRefresh={mutate}
-        refreshing={isLoading}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={mutate}
+            colors={[StainedGlassTheme.colors.gold]}
+            tintColor={StainedGlassTheme.colors.gold}
+          />
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
       />
@@ -120,234 +242,352 @@ export default function JobsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.welcomeSection}>
-            <Text style={styles.greeting}>Welcome back,</Text>
-            <Text style={styles.userName}>{user?.first_name || 'Driver'}! 👋</Text>
+    <ScreenBackground>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <View style={styles.userSection}>
+              <SSLogisticsLogo size="medium" variant="badge" />
+              <View style={styles.userInfo}>
+                <Text style={styles.greeting}>{getTimeBasedGreeting()},</Text>
+                <Text style={styles.userName}>
+                  {user?.first_name || 'Driver'}! 👋
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.logoutButton} onPress={logout}>
+              <Ionicons name="log-out-outline" size={18} color={StainedGlassTheme.colors.parchmentLight} />
+              <Text style={styles.logoutText}>Log Out</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-            <Text style={styles.logoutText}>Log Out</Text>
+        </View>
+
+        {/* Filter Chips */}
+        <View style={styles.filterContainer}>
+          <TouchableOpacity
+            style={[styles.filterChip, selectedFilter === 'all' && styles.filterChipActive]}
+            onPress={() => setSelectedFilter('all')}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.filterChipText, selectedFilter === 'all' && styles.filterChipTextActive]}>
+              All ({activeJobs.length})
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedFilter === 'pending' && styles.filterChipActive]}
+            onPress={() => setSelectedFilter('pending')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="hourglass-outline"
+              size={14}
+              color={selectedFilter === 'pending' ? StainedGlassTheme.colors.gold : StainedGlassTheme.colors.parchmentLight}
+            />
+            <Text style={[styles.filterChipText, selectedFilter === 'pending' && styles.filterChipTextActive]}>
+              Pending
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.filterChip, selectedFilter === 'in_transit' && styles.filterChipActive]}
+            onPress={() => setSelectedFilter('in_transit')}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="car-outline"
+              size={14}
+              color={selectedFilter === 'in_transit' ? StainedGlassTheme.colors.gold : StainedGlassTheme.colors.parchmentLight}
+            />
+            <Text style={[styles.filterChipText, selectedFilter === 'in_transit' && styles.filterChipTextActive]}>
+              In Transit
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Page Title */}
-      <View style={styles.titleSection}>
-        <Text style={styles.pageTitle}>My Assigned Jobs</Text>
-        <Text style={styles.pageSubtitle}>Manage your delivery assignments</Text>
-      </View>
-
-      {/* Content */}
-      {renderContent()}
-    </SafeAreaView>
+        {/* Content */}
+        {renderContent()}
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f8fafc',
   },
   // Header Styles
   header: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.lg,
+    paddingTop: Spacing.lg,
+    paddingBottom: Spacing.md,
+    backgroundColor: 'rgba(41, 37, 66, 0.3)',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3.84,
-    elevation: 2,
+    borderBottomColor: StainedGlassTheme.colors.goldDark,
   },
   headerContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  welcomeSection: {
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
     flex: 1,
   },
+  userInfo: {
+    marginLeft: Spacing.md,
+  },
   greeting: {
-    fontSize: 14,
-    color: '#64748B',
+    ...Typography.caption,
+    color: StainedGlassTheme.colors.parchmentLight,
     fontWeight: '500',
   },
   userName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e293b',
+    ...Typography.h3,
+    color: StainedGlassTheme.colors.parchment,
     marginTop: 2,
   },
   logoutButton: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    backgroundColor: 'rgba(255, 223, 186, 0.1)',
+    borderRadius: BorderRadius.sm,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: StainedGlassTheme.colors.goldDark,
+    gap: Spacing.xs,
   },
   logoutText: {
-    color: '#64748B',
+    color: StainedGlassTheme.colors.parchmentLight,
     fontWeight: '600',
     fontSize: 14,
   },
   // Title Section
   titleSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 24,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.lg,
+    position: 'relative',
   },
   pageTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 4,
+    ...Typography.h1,
+    color: StainedGlassTheme.colors.parchment,
+    marginBottom: Spacing.xs,
   },
   pageSubtitle: {
-    fontSize: 16,
-    color: '#64748B',
+    ...Typography.body,
+    color: StainedGlassTheme.colors.parchmentLight,
     fontWeight: '500',
+    marginBottom: Spacing.md,
+  },
+  jobCountBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 223, 186, 0.15)',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: StainedGlassTheme.colors.goldDark,
+  },
+  jobCountText: {
+    color: StainedGlassTheme.colors.gold,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  // Filter Styles
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    gap: Spacing.sm,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255, 223, 186, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 223, 186, 0.1)',
+    gap: 4,
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(255, 223, 186, 0.15)',
+    borderColor: StainedGlassTheme.colors.gold,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: StainedGlassTheme.colors.parchmentLight,
+  },
+  filterChipTextActive: {
+    color: StainedGlassTheme.colors.gold,
   },
   // List Styles
   listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: Spacing.lg,
+    paddingBottom: 100, // Reduced padding for floating tab bar
   },
-  itemContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#f1f5f9',
+  listItemTouchable: {
+    marginBottom: Spacing.lg,
   },
-  itemContent: {
-    padding: 20,
+  jobCard: {
+    padding: Spacing.lg,
   },
-  itemHeader: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
   },
-  jobId: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#3B82F6',
+  jobIdContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
     flex: 1,
   },
+  jobId: {
+    ...Typography.bodySemibold,
+    color: StainedGlassTheme.colors.parchment,
+  },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  statusPENDING: {
-    backgroundColor: '#ffedd5',
-  },
-  statusIN_TRANSIT: {
-    backgroundColor: '#dbeafe',
-  },
-  statusDELIVERED: {
-    backgroundColor: '#dcfce7',
-  },
-  statusFAILED: {
-    backgroundColor: '#fee2e2',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    gap: Spacing.xs,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+    fontSize: 11,
+    fontWeight: '700',
     letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   // Route Styles
   routeContainer: {
+    marginBottom: Spacing.lg,
+  },
+  locationRow: {
     flexDirection: 'row',
-    marginBottom: 16,
+    alignItems: 'flex-start',
+    marginBottom: Spacing.sm,
   },
   routeDot: {
-    alignItems: 'center',
-    marginRight: 12,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginTop: 4,
+    marginRight: Spacing.md,
+    borderWidth: 2,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3B82F6',
+  pickupDot: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#3B82F6',
   },
-  verticalLine: {
-    width: 2,
+  deliveryDot: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: '#10B981',
+  },
+  locationInfo: {
     flex: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 4,
   },
-  routeAddresses: {
-    flex: 1,
-  },
-  addressSection: {
-    marginBottom: 12,
-  },
-  addressLabel: {
+  locationLabel: {
     fontSize: 11,
-    fontWeight: 'bold',
-    color: '#64748B',
+    color: StainedGlassTheme.colors.parchmentLight,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 4,
   },
   addressText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1e293b',
-    lineHeight: 18,
+    ...Typography.body,
+    color: StainedGlassTheme.colors.parchment,
+    lineHeight: 20,
   },
-  // Footer Styles
-  itemFooter: {
+  routeLineContainer: {
+    alignItems: 'center',
+    height: 20,
+    marginLeft: 5,
+    marginVertical: 2,
+  },
+  verticalLine: {
+    width: 2,
+    height: '100%',
+    backgroundColor: StainedGlassTheme.colors.goldMedium,
+    opacity: 0.4,
+  },
+  routeArrow: {
+    position: 'absolute',
+    top: '50%',
+    marginTop: -8,
+  },
+  // Card Footer
+  cardFooter: {
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 223, 186, 0.1)',
+    marginBottom: Spacing.md,
+  },
+  footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: Spacing.sm,
+  },
+  footerItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    gap: Spacing.xs,
   },
-  itemDate: {
-    fontSize: 12,
-    color: '#64748B',
+  footerText: {
+    color: StainedGlassTheme.colors.parchmentLight,
+    fontSize: 13,
     fontWeight: '500',
-    flex: 1,
   },
-  itemCustomer: {
-    fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-    marginLeft: 8,
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  customerText: {
+    color: StainedGlassTheme.colors.parchment,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // View Details Button
+  viewDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.sm,
+    backgroundColor: 'rgba(255, 223, 186, 0.08)',
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: StainedGlassTheme.colors.goldDark,
+  },
+  viewDetailsText: {
+    color: StainedGlassTheme.colors.gold,
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: Spacing.xs,
   },
   // Loading State
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: Spacing.xl,
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
+    ...Typography.body,
+    color: StainedGlassTheme.colors.parchmentLight,
+    marginTop: Spacing.md,
     fontWeight: '500',
   },
   // Error State
@@ -355,18 +595,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: Spacing.xl,
+  },
+  errorIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(248, 113, 113, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(248, 113, 113, 0.2)',
   },
   errorText: {
-    fontSize: 18,
-    color: '#ef4444',
-    fontWeight: '600',
+    ...Typography.h4,
+    color: StainedGlassTheme.colors.parchment,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: Spacing.xs,
   },
   errorSubtext: {
-    fontSize: 14,
-    color: '#64748B',
+    ...Typography.body,
+    color: StainedGlassTheme.colors.parchmentLight,
     textAlign: 'center',
   },
   // Empty State
@@ -374,23 +624,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 40,
+    padding: Spacing.xl,
   },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
+  emptyIconContainer: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255, 223, 186, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+    borderWidth: 1,
+    borderColor: StainedGlassTheme.colors.goldDark,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    marginBottom: 8,
+    ...Typography.h3,
+    color: StainedGlassTheme.colors.parchment,
     textAlign: 'center',
+    marginBottom: Spacing.sm,
   },
   emptyText: {
-    fontSize: 16,
-    color: '#64748B',
+    ...Typography.body,
+    color: StainedGlassTheme.colors.parchmentLight,
     textAlign: 'center',
     lineHeight: 22,
+    paddingHorizontal: Spacing.xl,
   },
 });

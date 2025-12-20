@@ -20,7 +20,7 @@ class JobTimelineInline(admin.TabularInline):
 class JobTimelineAdmin(admin.ModelAdmin):
     list_display = ('job', 'status', 'timestamp', 'location', 'is_current')
     list_filter = ('status', 'is_current', 'timestamp')
-    search_fields = ('job__id', 'location', 'description')
+    search_fields = ('job__job_number', 'job__id', 'location', 'description')
     autocomplete_fields = ['job']
 
 @admin.register(Job)
@@ -31,15 +31,14 @@ class JobAdmin(admin.ModelAdmin):
     inlines = [ShipmentInline, JobTimelineInline]  # Add ShipmentInline
 
     list_display = (
-        'id', 
+        'job_number', # Show friendly job number first
         'customer', 
         'service_type',
         'pickup_city', 
         'delivery_city',
-        'pickup_contact_person',
-        'delivery_contact_person',
         'requested_pickup_date',
-        'created_at'
+        'created_at',
+        'id', # Keep UUID visible but less prominent
     )
     
     list_filter = (
@@ -51,25 +50,27 @@ class JobAdmin(admin.ModelAdmin):
     )
     
     search_fields = (
+        'job_number', # Search by simplified ID
         'id', 
         'customer__username', 
         'customer__email',
         'pickup_city', 
         'delivery_city',
-        'pickup_address',
-        'delivery_address',
         'pickup_contact_person',
-        'delivery_contact_person',
-        'pickup_contact_phone',
-        'delivery_contact_phone',
-        'cargo_description'
+        'delivery_contact_person'
     )
     
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ('job_number', 'created_at', 'updated_at', 'id')
     autocomplete_fields = ['customer']
 
     # Organize the detail view into sections
     fieldsets = (
+        ('Identity', {
+            'fields': (
+                'job_number',
+                'id',
+            )
+        }),
         ('Job Overview', {
             'fields': (
                 'customer', 

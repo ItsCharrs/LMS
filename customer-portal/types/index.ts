@@ -39,6 +39,7 @@ export interface JobTimeline {
 
 export interface Job {
   id: string;
+  job_number?: number;
   status: string;
   service_type: string;
   cargo_description: string;

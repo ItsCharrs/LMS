@@ -1,369 +1,362 @@
 // src/screens/LoginScreen.tsx
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  StyleSheet, 
-  SafeAreaView, 
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  ScrollView,
-  Dimensions
+import {
+    View,
+    Text,
+    TouchableOpacity,
+    StyleSheet,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ActivityIndicator,
+    Dimensions
 } from 'react-native';
-import { useAuth } from '../context/AuthContext'; 
+import { useAuth } from '../context/AuthContext';
+import { ScreenBackground } from '../components/ScreenBackground';
+import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import {
+    StainedGlassTheme,
+    StainedGlassStyles,
+    Typography,
+    Spacing,
+    BorderRadius,
+    Shadows
+} from '../styles/globalStyles';
+import { StainedGlassCard } from '../components/StainedGlassCard';
+import { StainedGlassInput } from '../components/StainedGlassInput';
+import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [rememberMe, setRememberMe] = useState(false);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter both email and password.");
-      return;
-    }
-    
-    console.log('--- LOGIN ATTEMPT ---');
-    console.log('Email:', email);
-    console.log('Password Length:', password.length);
-    console.log('---------------------');
-    
-    setIsLoading(true);
-    try {
-      await login(email, password);
-    } catch (error) {
-      console.error("Login attempt failed:", error);
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-      Alert.alert("Login Failed", errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const { login } = useAuth();
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView 
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Background Gradient Effect */}
-          <View style={styles.backgroundGradient}>
-            <View style={styles.gradientTop} />
-            <View style={styles.gradientMiddle} />
-            <View style={styles.gradientBottom} />
-          </View>
+    const handleLogin = async () => {
+        if (!email || !password) {
+            Alert.alert("Error", "Please enter both email and password.");
+            return;
+        }
 
-          {/* Header Section */}
-          <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logo}>
-                <Text style={styles.logoText}>S&S</Text>
-              </View>
-            </View>
-            <Text style={styles.companyName}>S&S Logistics</Text>
-            <Text style={styles.subtitle}>Driver Portal</Text>
-          </View>
+        setIsLoading(true);
+        try {
+            await login(email, password);
+        } catch (error) {
+            console.error("Login attempt failed:", error);
+            const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
+            Alert.alert("Login Failed", errorMessage);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-          {/* Login Card */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <Text style={styles.icon}>🚚</Text>
-              <Text style={styles.cardTitle}>Welcome Back</Text>
-              <Text style={styles.cardSubtitle}>Sign in to your driver account</Text>
-            </View>
-
-            {/* Email Input */}
-            <View style={styles.inputContainer}>
-              <View style={styles.inputLabel}>
-                <Text style={styles.inputIcon}>📧</Text>
-                <Text style={styles.label}>Email Address</Text>
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your email"
-                placeholderTextColor="#9CA3AF"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputContainer}>
-              <View style={styles.inputLabel}>
-                <Text style={styles.inputIcon}>🔒</Text>
-                <Text style={styles.label}>Password</Text>
-              </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your password"
-                placeholderTextColor="#9CA3AF"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoComplete="password"
-                editable={!isLoading}
-              />
-            </View>
-
-            {/* Login Button */}
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-              onPress={handleLogin}
-              disabled={isLoading}
+    return (
+        <ScreenBackground>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={styles.keyboardView}
             >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <View style={styles.buttonContent}>
-                  <Text style={styles.loginButtonText}>Sign In</Text>
-                  <Text style={styles.buttonIcon}>🚚</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+                {/* Main Stained Glass Card - REUSABLE COMPONENT */}
+                <StainedGlassCard
+                    style={{ padding: Spacing.xl }}
+                    showLogoAccents={true}
+                >
+                    {/* Header */}
+                    <View style={styles.header}>
+                        {/* Premium S&S Logistics Logo */}
+                        <View style={styles.logoContainer}>
+                            <SSLogisticsLogo size="medium" variant="badge" />
+                        </View>
 
-            {/* Help Text */}
-            <View style={styles.helpContainer}>
-              <Text style={styles.helpText}>
-                Having trouble signing in? Contact your manager.
-              </Text>
-            </View>
-          </View>
+                        <Text style={[
+                            Typography.h2,
+                            styles.title,
+                            styles.stainedText
+                        ]}>
+                            Driver Portal
+                        </Text>
+                        <Text style={[
+                            Typography.captionMedium,
+                            styles.subtitle,
+                            styles.stainedSubtext
+                        ]}>
+                            Verified drivers only
+                        </Text>
+                    </View>
 
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>S&S Logistics Management System v1.0</Text>
-            <Text style={styles.footerSubtext}>Secure Driver Portal</Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+                    {/* Form */}
+                    <View style={[styles.form, { gap: Spacing.md }]}>
+
+                        {/* Email Input - REUSABLE COMPONENT */}
+                        <StainedGlassInput
+                            icon="mail-outline"
+                            placeholder="Driver Email"
+                            placeholderTextColor={StainedGlassTheme.colors.parchmentLight}
+                            value={email}
+                            onChangeText={setEmail}
+                            autoCapitalize="none"
+                            keyboardType="email-address"
+                            autoComplete="email"
+                        />
+
+                        {/* Password Input - REUSABLE COMPONENT */}
+                        <StainedGlassInput
+                            icon="lock-closed-outline"
+                            placeholder="Password"
+                            placeholderTextColor={StainedGlassTheme.colors.parchmentLight}
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                            showPasswordToggle
+                            onTogglePassword={() => setShowPassword(!showPassword)}
+                            autoComplete="password"
+                        />
+
+                        {/* Remember Me & Forgot Password */}
+                        <View style={styles.rowBetween}>
+                            <TouchableOpacity
+                                style={styles.rememberRow}
+                                onPress={() => setRememberMe(!rememberMe)}
+                            >
+                                <Ionicons
+                                    name={rememberMe ? "checkbox" : "square-outline"}
+                                    size={20}
+                                    color={rememberMe ? StainedGlassTheme.colors.gold : StainedGlassTheme.colors.goldLight}
+                                />
+                                <Text style={[
+                                    Typography.smallMedium,
+                                    styles.stainedSubtext,
+                                    { marginLeft: Spacing.sm }
+                                ]}>
+                                    Remember this device
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity>
+                                <Text style={[
+                                    Typography.smallMedium,
+                                    styles.goldLink
+                                ]}>
+                                    Forgot password?
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Sign In Button - FIXED HERE */}
+                        <TouchableOpacity
+                            style={[styles.primaryBtn, Shadows.lg]}
+                            onPress={handleLogin}
+                            disabled={isLoading}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={StainedGlassTheme.colors.buttonGradient as any}
+                                style={styles.gradientBtn}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color={StainedGlassTheme.colors.gold} />
+                                ) : (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+                                        <Text style={[
+                                            styles.primaryBtnText,
+                                            { color: StainedGlassTheme.colors.gold }
+                                        ]}>
+                                            Sign In
+                                        </Text>
+                                        <Ionicons name="arrow-forward" size={18} color={StainedGlassTheme.colors.gold} />
+                                    </View>
+                                )}
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        {/* Security Notice */}
+                        <View style={[
+                            styles.securityNotice,
+                            styles.stainedPanel
+                        ]}>
+                            <View style={[
+                                styles.sealContainer,
+                                { backgroundColor: StainedGlassTheme.colors.goldVeryLight }
+                            ]}>
+                                <Ionicons name="shield-checkmark" size={16} color={StainedGlassTheme.colors.gold} />
+                            </View>
+                            <Text style={[
+                                Typography.small,
+                                styles.securityText,
+                                styles.stainedSubtext
+                            ]}>
+                                Secure driver authentication required
+                            </Text>
+                        </View>
+
+                    </View>
+
+                    {/* Contact Support */}
+                    <View style={[
+                        styles.supportContainer,
+                        styles.stainedDivider
+                    ]}>
+                        <Text style={[
+                            Typography.caption,
+                            styles.supportText,
+                            styles.stainedSubtext
+                        ]}>
+                            Need access? Contact dispatch
+                        </Text>
+                        <TouchableOpacity style={[
+                            styles.supportButton,
+                            styles.stainedButton
+                        ]}>
+                            <Text style={[
+                                Typography.captionMedium,
+                                styles.supportButtonText,
+                                styles.goldLink
+                            ]}>
+                                dispatch@company.com
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
+                </StainedGlassCard>
+            </KeyboardAvoidingView>
+        </ScreenBackground>
+    );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#0F172A',
-  },
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    minHeight: height,
-  },
-  backgroundGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gradientTop: {
-    position: 'absolute',
-    top: -height * 0.3,
-    left: -width * 0.2,
-    width: width * 1.4,
-    height: height * 0.6,
-    backgroundColor: '#F8FAFC',
-    opacity: 0.1,
-    borderRadius: width,
-  },
-  gradientMiddle: {
-    position: 'absolute',
-    top: height * 0.2,
-    right: -width * 0.3,
-    width: width * 0.8,
-    height: width * 0.8,
-    backgroundColor: '#3B82F6',
-    opacity: 0.1,
-    borderRadius: width * 0.4,
-  },
-  gradientBottom: {
-    position: 'absolute',
-    bottom: -height * 0.2,
-    left: -width * 0.2,
-    width: width * 1.2,
-    height: height * 0.4,
-    backgroundColor: '#8B5CF6',
-    opacity: 0.1,
-    borderRadius: width,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 48,
-    paddingHorizontal: 24,
-  },
-  logoContainer: {
-    marginBottom: 16,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    backgroundColor: '#3B82F6',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: {
-      width: 0,
-      height: 10,
+    keyboardView: {
+        flex: 1,
+        justifyContent: 'center',
+        padding: Spacing.lg,
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  logoText: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  companyName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    color: '#CBD5E1',
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    marginHorizontal: 24,
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 20,
+    header: {
+        alignItems: 'center',
+        marginBottom: Spacing.xl,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 30,
-    elevation: 10,
-  },
-  cardHeader: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  icon: {
-    fontSize: 32,
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 8,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  inputContainer: {
-    marginBottom: 20,
-  },
-  inputLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  inputIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  input: {
-    height: 56,
-    borderColor: '#E2E8F0',
-    borderWidth: 2,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
-    fontSize: 16,
-    color: '#1E293B',
-    fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#3B82F6',
-    height: 56,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    shadowColor: '#3B82F6',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+    logoContainer: {
+        marginBottom: Spacing.lg,
+        alignItems: 'center',
+        position: 'relative',
     },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#93C5FD',
-    shadowOpacity: 0.1,
-  },
-  buttonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loginButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    marginRight: 8,
-  },
-  buttonIcon: {
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  helpContainer: {
-    marginTop: 24,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  helpText: {
-    fontSize: 12,
-    color: '#64748B',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  footer: {
-    alignItems: 'center',
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  footerText: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  footerSubtext: {
-    fontSize: 10,
-    color: '#64748B',
-    textAlign: 'center',
-  },
+    driverBadge: {
+        display: 'none',
+    },
+    stainedText: {
+        color: StainedGlassTheme.colors.parchment,
+        textShadowColor: 'rgba(0, 0, 0, 0.8)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 6,
+        letterSpacing: 0.5,
+        textAlign: 'center',
+    },
+    stainedSubtext: {
+        color: StainedGlassTheme.colors.parchmentLight,
+        textShadowColor: 'rgba(0, 0, 0, 0.6)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 4,
+        letterSpacing: 0.3,
+        textAlign: 'center',
+    },
+    goldLink: {
+        color: StainedGlassTheme.colors.gold,
+        textShadowColor: 'rgba(0, 0, 0, 0.4)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+        fontWeight: '600',
+    },
+    form: {
+        width: '100%',
+    },
+    rowBetween: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: Spacing.xs,
+    },
+    rememberRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    primaryBtn: {
+        borderRadius: BorderRadius.lg,
+        marginTop: Spacing.md,
+        marginBottom: Spacing.sm,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldMedium,
+    },
+    gradientBtn: {
+        height: 56,
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: '100%',
+    },
+    primaryBtnText: {
+        fontWeight: '700',
+        fontSize: 16,
+        letterSpacing: 0.5,
+    },
+    securityNotice: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.sm,
+        marginTop: Spacing.md,
+        paddingVertical: Spacing.xs,
+    },
+    stainedPanel: {
+        backgroundColor: StainedGlassTheme.colors.darkPurple,
+        borderRadius: BorderRadius.md,
+        padding: Spacing.sm,
+    },
+    sealContainer: {
+        width: 28,
+        height: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: BorderRadius.full,
+    },
+    securityText: {
+        textAlign: 'center',
+    },
+    supportContainer: {
+        alignItems: 'center',
+        borderTopWidth: 2,
+    },
+    stainedDivider: {
+        borderTopColor: StainedGlassTheme.colors.goldDark,
+        marginTop: Spacing.xl,
+        paddingTop: Spacing.lg,
+    },
+    supportText: {
+        textAlign: 'center',
+    },
+    supportButton: {
+        paddingHorizontal: Spacing.md,
+        paddingVertical: Spacing.sm,
+        borderRadius: BorderRadius.md,
+        marginTop: Spacing.xs,
+    },
+    stainedButton: {
+        backgroundColor: StainedGlassTheme.colors.goldVeryLight,
+        borderColor: StainedGlassTheme.colors.goldDark,
+        borderWidth: 1,
+    },
+    supportButtonText: {
+        textAlign: 'center',
+    },
+    title: {
+        marginBottom: Spacing.xs,
+    },
+    subtitle: {
+        textAlign: 'center',
+    },
 });

@@ -1,206 +1,424 @@
-
+// src/screens/ProfileScreen.tsx
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    ScrollView
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
 import Ionicons from 'react-native-vector-icons/Ionicons';
+import { ScreenBackground } from '../components/ScreenBackground';
+import { StainedGlassCard } from '../components/StainedGlassCard';
+import { StainedGlassTheme, Typography, Spacing, BorderRadius } from '../styles/globalStyles';
+import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
 
 export default function ProfileScreen() {
     const { user, logout } = useAuth();
 
-    return (
-        <SafeAreaView style={styles.safeArea}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Profile</Text>
-            </View>
+    const handleLogout = () => {
+        // You could add a confirmation dialog here
+        logout();
+    };
 
-            <View style={styles.content}>
-                <View style={styles.profileCard}>
-                    <View style={styles.avatarContainer}>
-                        <Text style={styles.avatarText}>
-                            {user?.first_name?.charAt(0) || 'D'}
-                            {user?.last_name?.charAt(0) || ''}
+    return (
+        <ScreenBackground>
+            <SafeAreaView style={styles.container} edges={['top']}>
+                <ScrollView
+                    style={styles.scrollView}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.scrollContent}
+                >
+                    {/* Header */}
+                    <View style={styles.header}>
+                        <View style={styles.logoContainer}>
+                            <SSLogisticsLogo size="medium" variant="badge" />
+                        </View>
+                        <Text style={styles.headerTitle}>My Profile</Text>
+                        <Text style={styles.headerSubtitle}>Driver Account</Text>
+                    </View>
+
+                    {/* Profile Card */}
+                    <StainedGlassCard style={styles.profileCard}>
+                        <View style={styles.avatarSection}>
+                            <View style={styles.avatarContainer}>
+                                <Text style={styles.avatarText}>
+                                    {user?.first_name?.charAt(0)?.toUpperCase() || 'D'}
+                                    {user?.last_name?.charAt(0)?.toUpperCase() || ''}
+                                </Text>
+                                <View style={styles.onlineIndicator} />
+                            </View>
+                            <View style={styles.userInfo}>
+                                <Text style={styles.userName}>
+                                    {user?.first_name} {user?.last_name}
+                                </Text>
+                                <View style={styles.roleBadge}>
+                                    <Ionicons name="shield-checkmark" size={14} color={StainedGlassTheme.colors.gold} />
+                                    <Text style={styles.userRole}>Official Driver</Text>
+                                </View>
+                                <Text style={styles.userEmail}>{user?.email}</Text>
+                            </View>
+                        </View>
+                    </StainedGlassCard>
+
+                    {/* Stats Card */}
+                    <StainedGlassCard style={styles.statsCard}>
+                        <Text style={styles.statsTitle}>Performance Stats</Text>
+                        <View style={styles.statsContainer}>
+                            <View style={styles.statBox}>
+                                <View style={[styles.statIconContainer, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                                    <Ionicons name="star" size={20} color="#FBBF24" />
+                                </View>
+                                <Text style={styles.statValue}>4.9</Text>
+                                <Text style={styles.statLabel}>Rating</Text>
+                            </View>
+
+                            <View style={styles.statDivider} />
+
+                            <View style={styles.statBox}>
+                                <View style={[styles.statIconContainer, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
+                                    <Ionicons name="car" size={20} color="#3B82F6" />
+                                </View>
+                                <Text style={styles.statValue}>124</Text>
+                                <Text style={styles.statLabel}>Trips</Text>
+                            </View>
+
+                            <View style={styles.statDivider} />
+
+                            <View style={styles.statBox}>
+                                <View style={[styles.statIconContainer, { backgroundColor: 'rgba(34, 197, 94, 0.15)' }]}>
+                                    <Ionicons name="time" size={20} color="#22C55E" />
+                                </View>
+                                <Text style={styles.statValue}>98%</Text>
+                                <Text style={styles.statLabel}>On Time</Text>
+                            </View>
+                        </View>
+                    </StainedGlassCard>
+
+                    {/* Menu Section */}
+                    <StainedGlassCard style={styles.menuCard}>
+                        <Text style={styles.menuTitle}>Account & Settings</Text>
+
+                        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+                            <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(96, 165, 250, 0.15)' }]}>
+                                <Ionicons name="car-sport-outline" size={22} color="#60A5FA" />
+                            </View>
+                            <View style={styles.menuTextContainer}>
+                                <Text style={styles.menuText}>Vehicle Information</Text>
+                                <Text style={styles.menuSubtext}>Manage your vehicle details</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={StainedGlassTheme.colors.goldLight} />
+                        </TouchableOpacity>
+
+                        <View style={styles.menuDivider} />
+
+                        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+                            <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(167, 139, 250, 0.15)' }]}>
+                                <Ionicons name="settings-outline" size={22} color="#A78BFA" />
+                            </View>
+                            <View style={styles.menuTextContainer}>
+                                <Text style={styles.menuText}>Account Settings</Text>
+                                <Text style={styles.menuSubtext}>Update preferences & notifications</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={StainedGlassTheme.colors.goldLight} />
+                        </TouchableOpacity>
+
+                        <View style={styles.menuDivider} />
+
+                        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+                            <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(251, 191, 36, 0.15)' }]}>
+                                <Ionicons name="help-circle-outline" size={22} color="#FBBF24" />
+                            </View>
+                            <View style={styles.menuTextContainer}>
+                                <Text style={styles.menuText}>Help & Support</Text>
+                                <Text style={styles.menuSubtext}>Get assistance & contact dispatch</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={StainedGlassTheme.colors.goldLight} />
+                        </TouchableOpacity>
+
+                        <View style={styles.menuDivider} />
+
+                        <TouchableOpacity style={styles.menuItem} activeOpacity={0.7}>
+                            <View style={[styles.menuIconContainer, { backgroundColor: 'rgba(52, 211, 153, 0.15)' }]}>
+                                <Ionicons name="document-text-outline" size={22} color="#34D399" />
+                            </View>
+                            <View style={styles.menuTextContainer}>
+                                <Text style={styles.menuText}>Documents</Text>
+                                <Text style={styles.menuSubtext}>Licenses, insurance & permits</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color={StainedGlassTheme.colors.goldLight} />
+                        </TouchableOpacity>
+                    </StainedGlassCard>
+
+                    {/* Logout Button */}
+                    <TouchableOpacity
+                        style={styles.logoutButton}
+                        onPress={handleLogout}
+                        activeOpacity={0.8}
+                    >
+                        <View style={styles.logoutIconContainer}>
+                            <Ionicons name="log-out-outline" size={24} color="#EF4444" />
+                        </View>
+                        <Text style={styles.logoutText}>Log Out</Text>
+                    </TouchableOpacity>
+
+                    {/* Footer */}
+                    <View style={styles.footer}>
+                        <Text style={styles.footerText}>
+                            S&S Logistics Driver Portal v1.0
+                        </Text>
+                        <Text style={styles.footerSubtext}>
+                            Premium Transport Solutions
                         </Text>
                     </View>
-                    <Text style={styles.userName}>{user?.first_name} {user?.last_name}</Text>
-                    <Text style={styles.userRole}>Official Driver</Text>
-                    <Text style={styles.userEmail}>{user?.email}</Text>
-                </View>
-
-                <View style={styles.statsContainer}>
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>4.9</Text>
-                        <Text style={styles.statLabel}>Rating</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>124</Text>
-                        <Text style={styles.statLabel}>Trips</Text>
-                    </View>
-                    <View style={styles.statDivider} />
-                    <View style={styles.statBox}>
-                        <Text style={styles.statValue}>98%</Text>
-                        <Text style={styles.statLabel}>On Time</Text>
-                    </View>
-                </View>
-
-                <View style={styles.menuContainer}>
-                    <TouchableOpacity style={styles.menuItem}>
-                        <Ionicons name="car-sport-outline" size={24} color="#64748B" />
-                        <Text style={styles.menuText}>Vehicle Information</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.menuItem}>
-                        <Ionicons name="settings-outline" size={24} color="#64748B" />
-                        <Text style={styles.menuText}>Settings</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-                    </TouchableOpacity>
-
-                    <TouchableOpacity style={styles.menuItem}>
-                        <Ionicons name="help-circle-outline" size={24} color="#64748B" />
-                        <Text style={styles.menuText}>Help & Support</Text>
-                        <Ionicons name="chevron-forward" size={20} color="#CBD5E1" />
-                    </TouchableOpacity>
-                </View>
-
-                <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-                    <Ionicons name="log-out-outline" size={24} color="#EF4444" />
-                    <Text style={styles.logoutText}>Log Out</Text>
-                </TouchableOpacity>
-            </View>
-        </SafeAreaView>
+                </ScrollView>
+            </SafeAreaView>
+        </ScreenBackground>
     );
 }
 
 const styles = StyleSheet.create({
-    safeArea: {
+    container: {
         flex: 1,
-        backgroundColor: '#F8FAFC',
+    },
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        paddingBottom: 100, // Reduced padding for floating tab bar
     },
     header: {
-        paddingHorizontal: 20,
-        paddingVertical: 16,
-        backgroundColor: '#fff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.lg,
+        paddingBottom: Spacing.md,
+        alignItems: 'center',
+        marginBottom: Spacing.lg,
+    },
+    logoContainer: {
+        marginBottom: Spacing.lg,
+        alignItems: 'center',
     },
     headerTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#0F172A',
+        ...Typography.h2,
+        color: StainedGlassTheme.colors.parchment,
+        textAlign: 'center',
+        marginTop: Spacing.md,
+        marginBottom: Spacing.xs,
     },
-    content: {
-        padding: 20,
+    headerSubtitle: {
+        ...Typography.caption,
+        color: StainedGlassTheme.colors.parchmentLight,
+        textAlign: 'center',
     },
     profileCard: {
+        padding: Spacing.lg,
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.lg,
+    },
+    avatarSection: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 24,
     },
     avatarContainer: {
+        position: 'relative',
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#3B82F6',
+        backgroundColor: StainedGlassTheme.colors.goldMedium,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
-        shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        elevation: 4,
+        marginRight: Spacing.lg,
+        borderWidth: 2,
+        borderColor: StainedGlassTheme.colors.gold,
     },
     avatarText: {
-        fontSize: 32,
-        fontWeight: 'bold',
-        color: '#fff',
+        fontSize: 28,
+        fontWeight: '700',
+        color: StainedGlassTheme.colors.deepPurple,
+        letterSpacing: 1,
+    },
+    onlineIndicator: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#22C55E',
+        borderWidth: 2,
+        borderColor: StainedGlassTheme.colors.deepPurple,
+    },
+    userInfo: {
+        flex: 1,
     },
     userName: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        color: '#0F172A',
-        marginBottom: 4,
+        ...Typography.h4,
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: Spacing.xs,
+    },
+    roleBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: BorderRadius.sm,
+        alignSelf: 'flex-start',
+        marginBottom: Spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 223, 186, 0.2)',
     },
     userRole: {
-        fontSize: 16,
-        color: '#64748B',
-        marginBottom: 4,
-        fontWeight: '500',
+        fontSize: 12,
+        fontWeight: '600',
+        color: StainedGlassTheme.colors.gold,
+        marginLeft: 4,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     userEmail: {
+        ...Typography.caption,
+        color: StainedGlassTheme.colors.parchmentLight,
         fontSize: 14,
-        color: '#94A3B8',
+    },
+    statsCard: {
+        padding: Spacing.lg,
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.lg,
+    },
+    statsTitle: {
+        ...Typography.h4,
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: Spacing.lg,
+        textAlign: 'center',
     },
     statsContainer: {
         flexDirection: 'row',
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 20,
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     statBox: {
         flex: 1,
         alignItems: 'center',
     },
+    statIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
     statValue: {
         fontSize: 20,
-        fontWeight: 'bold',
-        color: '#0F172A',
-        marginBottom: 4,
+        fontWeight: '700',
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: Spacing.xs,
     },
     statLabel: {
         fontSize: 12,
-        color: '#64748B',
-        fontWeight: '500',
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontWeight: '600',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     statDivider: {
         width: 1,
-        backgroundColor: '#E2E8F0',
+        height: 40,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
     },
-    menuContainer: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
-        padding: 8,
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+    menuCard: {
+        padding: Spacing.lg,
+        marginHorizontal: Spacing.lg,
+        marginBottom: Spacing.lg,
+    },
+    menuTitle: {
+        ...Typography.h4,
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: Spacing.md,
+        textAlign: 'center',
     },
     menuItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
+        paddingVertical: Spacing.md,
+    },
+    menuIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: BorderRadius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    menuTextContainer: {
+        flex: 1,
     },
     menuText: {
-        flex: 1,
         fontSize: 16,
-        color: '#334155',
-        marginLeft: 12,
-        fontWeight: '500',
+        fontWeight: '600',
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: 2,
+    },
+    menuSubtext: {
+        fontSize: 13,
+        color: StainedGlassTheme.colors.parchmentLight,
+    },
+    menuDivider: {
+        height: 1,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
     },
     logoutButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 16,
-        backgroundColor: '#FEF2F2',
-        borderRadius: 16,
+        marginHorizontal: Spacing.lg,
+        padding: Spacing.lg,
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+        borderRadius: BorderRadius.lg,
         borderWidth: 1,
-        borderColor: '#FECACA',
+        borderColor: 'rgba(239, 68, 68, 0.2)',
+        marginBottom: Spacing.xl,
+    },
+    logoutIconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(239, 68, 68, 0.3)',
     },
     logoutText: {
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         color: '#EF4444',
-        marginLeft: 8,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    footer: {
+        alignItems: 'center',
+        paddingHorizontal: Spacing.lg,
+    },
+    footerText: {
+        ...Typography.caption,
+        color: StainedGlassTheme.colors.parchmentLight,
+        textAlign: 'center',
+        marginBottom: Spacing.xs,
+    },
+    footerSubtext: {
+        fontSize: 12,
+        color: StainedGlassTheme.colors.parchmentLight,
+        opacity: 0.7,
+        textAlign: 'center',
+        fontStyle: 'italic',
     },
 });

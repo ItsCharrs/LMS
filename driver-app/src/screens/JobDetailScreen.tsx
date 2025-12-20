@@ -1,789 +1,961 @@
-// driver-app/src/screens/JobDetailScreen.tsx
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Button,
-  Alert,
-  ActivityIndicator,
-  Image,
-  TouchableOpacity,
-  Linking,
-  Platform
+// src/screens/JobDetailScreen.tsx
+import React, { useState } from 'react';
+import { 
+    View, 
+    Text, 
+    StyleSheet, 
+    ScrollView, 
+    TouchableOpacity, 
+    Image, 
+    Alert, 
+    Platform, 
+    Modal, 
+    Linking, 
+    ActivityIndicator,
+    Dimensions
 } from 'react-native';
-import Ionicons from 'react-native-vector-icons/Ionicons';
-import { useRoute, RouteProp } from '@react-navigation/native';
-import { launchCameraAsync, requestCameraPermissionsAsync, PermissionStatus } from 'expo-image-picker';
+import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/AppNavigator';
 import { useApi } from '../hooks/useApi';
 import { JobDetail } from '../types';
+import Ionicons from 'react-native-vector-icons/Ionicons';
+import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../lib/api';
 
-// Reusable component for info blocks
-const InfoBlock = ({ label, value }: { label: string; value: string | undefined }) => (
-  <View style={styles.infoBlock}>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={styles.value}>{value || 'N/A'}</Text>
-  </View>
-);
+// Stained Glass Components
+import { ScreenBackground } from '../components/ScreenBackground';
+import { StainedGlassCard } from '../components/StainedGlassCard';
+import { 
+    StainedGlassTheme, 
+    Typography, 
+    Spacing, 
+    BorderRadius,
+    StainedGlassStyles 
+} from '../styles/globalStyles';
+
+type JobDetailScreenRouteProp = RouteProp<RootStackParamList, 'JobDetail'>;
+type JobDetailScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'JobDetail'>;
+
+const { width } = Dimensions.get('window');
 
 export default function JobDetailScreen() {
-  const route = useRoute<RouteProp<RootStackParamList, 'JobDetail'>>();
-  const { jobId, shipmentId } = route.params;
+    const route = useRoute<JobDetailScreenRouteProp>();
+    const navigation = useNavigation<JobDetailScreenNavigationProp>();
+    const { jobId, shipmentId } = route.params;
+    const insets = useSafeAreaInsets();
 
-  const { data: job, error, isLoading, mutate } = useApi<JobDetail>(jobId ? `/driver/jobs/${jobId}/` : null);
+    const { data: job, isLoading, error, mutate } = useApi<JobDetail>(`/driver/jobs/${jobId}/`);
 
-  const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
-  const [isUploading, setIsUploading] = React.useState(false);
-  const [isUpdatingStatus, setIsUpdatingStatus] = React.useState(false);
+    // State
+    const [uploading, setUploading] = useState(false);
+    const [podImage, setPodImage] = useState<ImagePicker.ImagePickerAsset | null>(null);
+    const [modalVisible, setModalVisible] = useState(false);
+    const [statusUpdating, setStatusUpdating] = useState(false);
 
-  // Type assertion to include all statuses
-  const status = job?.status as 'PENDING' | 'PICKED_UP' | 'ASSIGNED' | 'IN_TRANSIT' | 'DELIVERED' | 'FAILED' | undefined;
+    // Helpers
+    const getStatusConfig = (status: string) => {
+        switch (status) {
+            case 'PENDING': 
+                return { 
+                    color: '#FBBF24', // Gold/Amber
+                    bgColor: 'rgba(251, 191, 36, 0.15)',
+                    icon: 'time-outline',
+                    label: 'Pending'
+                };
+            case 'PICKED_UP': 
+                return { 
+                    color: '#60A5FA', // Blue
+                    bgColor: 'rgba(96, 165, 250, 0.15)',
+                    icon: 'cube-outline',
+                    label: 'Picked Up'
+                };
+            case 'IN_TRANSIT': 
+                return { 
+                    color: '#A78BFA', // Purple
+                    bgColor: 'rgba(167, 139, 250, 0.15)',
+                    icon: 'car-outline',
+                    label: 'In Transit'
+                };
+            case 'DELIVERED': 
+                return { 
+                    color: '#34D399', // Green
+                    bgColor: 'rgba(52, 211, 153, 0.15)',
+                    icon: 'checkmark-circle-outline',
+                    label: 'Delivered'
+                };
+            case 'FAILED':
+                return { 
+                    color: '#F87171', // Red
+                    bgColor: 'rgba(248, 113, 113, 0.15)',
+                    icon: 'alert-circle-outline',
+                    label: 'Failed'
+                };
+            default: 
+                return { 
+                    color: '#9CA3AF', 
+                    bgColor: 'rgba(156, 163, 175, 0.15)',
+                    icon: 'help-circle-outline',
+                    label: status.replace('_', ' ')
+                };
+        }
+    };
 
-  const updateStatus = async (newStatus: string) => {
-    if (isUpdatingStatus) return;
+    const openMaps = (address: string, city: string) => {
+        const fullAddress = `${address}, ${city}`;
+        const url = Platform.select({
+            ios: `maps:0,0?q=${encodeURIComponent(fullAddress)}`,
+            android: `geo:0,0?q=${encodeURIComponent(fullAddress)}`,
+        });
+        Linking.openURL(url || "").catch(err => {
+            console.error('Error opening maps:', err);
+            Alert.alert("Error", "Could not open maps app.");
+        });
+    };
 
-    setIsUpdatingStatus(true);
-    try {
-      console.log(`Updating status to ${newStatus} for job: ${jobId}`);
-      // Unified Endpoint Call
-      await apiClient.post(`/driver/jobs/${jobId}/update_status/`, {
-        status: newStatus,
-        description: `Driver updated status to ${newStatus}`,
-        location: 'Driver Location'
-      });
+    const callNumber = (phone: string) => {
+        if (!phone) {
+            Alert.alert("No Phone", "Phone number not available.");
+            return;
+        }
+        Linking.openURL(`tel:${phone}`);
+    };
 
-      Alert.alert("Success", "Status updated successfully!");
-      mutate();
+    const handleUpdateStatus = async (newStatus: string) => {
+        setStatusUpdating(true);
+        try {
+            await apiClient.post(`/driver/jobs/${jobId}/update_status/`, {
+                status: newStatus,
+                description: `Driver updated status to ${newStatus}`,
+                location: 'Driver Location'
+            });
+            mutate();
+        } catch (err: any) {
+            console.error('Update status error:', err);
+            Alert.alert("Error", err.response?.data?.error || "Failed to update status.");
+        } finally {
+            setStatusUpdating(false);
+        }
+    };
 
-    } catch (err: any) {
-      console.error('Update status error:', err);
-      const errorMessage = err.response?.data?.error || "Failed to update status.";
-      Alert.alert("Error", errorMessage);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
+    const handleCameraLaunch = async () => {
+        try {
+            const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+            if (permissionResult.granted === false) {
+                Alert.alert("Permission Required", "You need to allow camera access to take photos.");
+                return;
+            }
 
-  const startTrip = () => updateStatus('IN_TRANSIT');
-  const confirmPickup = () => updateStatus('PICKED_UP');
-  const markAsDelivered = () => updateStatus('DELIVERED');
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                aspect: [4, 3],
+                quality: 0.8,
+            });
 
-  const handleTakePhoto = async () => {
-    const permissionResult = await requestCameraPermissionsAsync();
-    if (permissionResult.status !== PermissionStatus.GRANTED) {
-      Alert.alert("Permission Required", "You need to grant camera permissions to upload Proof of Delivery.");
-      return;
-    }
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setPodImage(result.assets[0]);
+            }
+        } catch (error) {
+            console.error('Camera error:', error);
+            Alert.alert("Error", "Could not open camera.");
+        }
+    };
 
-    const result = await launchCameraAsync({
-      allowsEditing: true,
-      quality: 0.7,
-      aspect: [4, 3],
-    });
+    const handleUploadPOD = async () => {
+        if (!podImage) return;
+        setUploading(true);
 
-    if (!result.canceled) {
-      const asset = result.assets[0];
-      setCapturedImage(asset.uri);
-    }
-  };
+        try {
+            const formData = new FormData();
+            const localUri = podImage.uri;
+            const filename = localUri.split('/').pop() || `pod_${jobId}.jpg`;
+            const match = /\.(\w+)$/.exec(filename);
+            const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-  const handleUploadPhoto = async () => {
-    if (!capturedImage) return;
+            formData.append('proof_of_delivery_image', {
+                uri: localUri,
+                name: filename,
+                type,
+            } as any);
 
-    setIsUploading(true);
+            await apiClient.post(`/driver/jobs/${jobId}/upload-pod/`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
+            });
 
-    try {
-      const response = await fetch(capturedImage);
-      const blob = await response.blob();
+            Alert.alert("Success", "Proof of Delivery uploaded!");
+            setModalVisible(false);
+            setPodImage(null);
+            mutate();
+        } catch (e: any) {
+            console.error('Upload error:', e);
+            Alert.alert("Error", "Failed to upload Proof of Delivery.");
+        } finally {
+            setUploading(false);
+        }
+    };
 
-      const formData = new FormData();
-      const file = new File([blob], `pod_${jobId}_${Date.now()}.jpg`, {
-        type: 'image/jpeg',
-      });
-
-      formData.append('proof_of_delivery_image', file as any);
-
-      // Use the new simplified upload endpoint
-      const uploadResponse = await apiClient.post(`/driver/jobs/${jobId}/upload-pod/`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
-      Alert.alert("Success", "Proof of Delivery uploaded successfully!");
-
-      setCapturedImage(null);
-      mutate();
-
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.error || err.response?.data?.details || "Upload failed. Please try again.";
-      Alert.alert("Upload Failed", errorMessage);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  const handleCancelUpload = () => {
-    setCapturedImage(null);
-  };
-
-  const handleRetakePhoto = () => {
-    setCapturedImage(null);
-    handleTakePhoto();
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Loading job details...</Text>
-        </View>
-      </SafeAreaView>
+    if (isLoading) return (
+        <ScreenBackground>
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={StainedGlassTheme.colors.gold} />
+                <Text style={styles.loadingText}>Loading Job Details...</Text>
+            </View>
+        </ScreenBackground>
     );
-  }
 
-  if (error || !job || !status) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Failed to load job details.</Text>
-          <Text style={styles.errorSubtext}>Please check your connection and try again.</Text>
-        </View>
-      </SafeAreaView>
+    if (error || !job) return (
+        <ScreenBackground>
+            <View style={styles.errorContainer}>
+                <Ionicons name="alert-circle" size={48} color={StainedGlassTheme.colors.gold} />
+                <Text style={styles.errorText}>Error loading job details.</Text>
+                <TouchableOpacity 
+                    style={styles.retryButton}
+                    onPress={() => mutate()}
+                >
+                    <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        </ScreenBackground>
     );
-  }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView style={styles.scrollView}>
-        {/* Status Header */}
-        <View style={[styles.statusHeader,
-        status === 'PENDING' && styles.statusPending,
-        status === 'ASSIGNED' && styles.statusAssigned,
-        status === 'IN_TRANSIT' && styles.statusInTransit,
-        status === 'DELIVERED' && styles.statusDelivered,
-        status === 'FAILED' && styles.statusFailed
-        ]}>
-          <View style={styles.statusContent}>
-            <Text style={styles.statusLabel}>CURRENT STATUS</Text>
-            <Text style={styles.statusText}>
-              {status.replace('_', ' ')}
-            </Text>
-          </View>
-        </View>
+    const statusConfig = getStatusConfig(job.status);
 
-        {/* Job Information */}
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>Job Details</Text>
-            <View style={styles.jobIdBadge}>
-              <Text style={styles.jobIdText}>#{jobId}</Text>
-            </View>
-          </View>
-          <InfoBlock label="Service Type" value={job.service_type?.replace(/_/g, ' ')} />
-          <InfoBlock label="Cargo Description" value={job.cargo_description} />
-        </View>
-
-        {/* Route Information */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Route Information</Text>
-          <View style={styles.routeContainer}>
-            <View style={styles.routeDot}>
-              <View style={styles.dot} />
-              <View style={styles.verticalLine} />
-              <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-            </View>
-            <View style={styles.routeAddresses}>
-              <View style={styles.addressSection}>
-                <Text style={styles.addressLabel}>PICKUP LOCATION</Text>
-                <Text style={styles.addressText}>{job.pickup_address}, {job.pickup_city}</Text>
-
-                <View style={styles.contactRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.contactName}>{job.pickup_contact_person}</Text>
-                    <Text style={styles.contactPhone}>{job.pickup_contact_phone}</Text>
-                  </View>
-                  <View style={styles.contactActions}>
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => Linking.openURL(`tel:${job.pickup_contact_phone}`)}
+    return (
+        <ScreenBackground>
+            <ScrollView 
+                style={styles.container}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+            >
+                {/* Header with Job Info */}
+                <View style={styles.header}>
+                    <TouchableOpacity 
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
                     >
-                      <Ionicons name="call" size={20} color="#3B82F6" />
+                        <Ionicons name="arrow-back" size={24} color={StainedGlassTheme.colors.parchment} />
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => {
-                        const query = encodeURIComponent(`${job.pickup_address}, ${job.pickup_city}`);
-                        const url = Platform.select({
-                          ios: `maps:0,0?q=${query}`,
-                          android: `geo:0,0?q=${query}`
-                        });
-                        Linking.openURL(url!);
-                      }}
-                    >
-                      <Ionicons name="map" size={20} color="#3B82F6" />
-                    </TouchableOpacity>
-                  </View>
+                    
+                    <View style={styles.headerContent}>
+                        <Text style={styles.jobId}>Job #{job.id.slice(0, 8)}</Text>
+                        <View style={styles.statusContainer}>
+                            <View style={[styles.statusBadge, { backgroundColor: statusConfig.bgColor }]}>
+                                <Ionicons 
+                                    name={statusConfig.icon as any} 
+                                    size={16} 
+                                    color={statusConfig.color} 
+                                    style={{ marginRight: 4 }}
+                                />
+                                <Text style={[styles.statusText, { color: statusConfig.color }]}>
+                                    {statusConfig.label}
+                                </Text>
+                            </View>
+                            <Text style={styles.date}>
+                                {new Date(job.requested_pickup_date).toLocaleDateString()}
+                            </Text>
+                        </View>
+                    </View>
                 </View>
-              </View>
 
-              <View style={styles.addressSection}>
-                <Text style={styles.addressLabel}>DELIVERY LOCATION</Text>
-                <Text style={styles.addressText}>{job.delivery_address}, {job.delivery_city}</Text>
+                {/* Main Job Card */}
+                <StainedGlassCard style={styles.mainCard}>
+                    {/* Route Information */}
+                    <View style={styles.routeSection}>
+                        <Text style={styles.sectionTitle}>ROUTE</Text>
+                        
+                        {/* Pickup Location */}
+                        <View style={styles.locationCard}>
+                            <View style={styles.locationHeader}>
+                                <View style={styles.locationDot}>
+                                    <View style={[styles.dot, styles.pickupDot]} />
+                                </View>
+                                <Text style={styles.locationLabel}>PICKUP LOCATION</Text>
+                                {job.pickup_contact_phone && (
+                                    <TouchableOpacity 
+                                        style={styles.callButtonSmall}
+                                        onPress={() => callNumber(job.pickup_contact_phone)}
+                                    >
+                                        <Ionicons name="call" size={14} color={StainedGlassTheme.colors.gold} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+                            <Text style={styles.address}>{job.pickup_address}</Text>
+                            <Text style={styles.city}>{job.pickup_city}</Text>
+                            <TouchableOpacity 
+                                style={styles.navigationButton}
+                                onPress={() => openMaps(job.pickup_address, job.pickup_city)}
+                            >
+                                <Ionicons name="navigate" size={16} color={StainedGlassTheme.colors.gold} />
+                                <Text style={styles.navigationText}>Navigate to Pickup</Text>
+                            </TouchableOpacity>
+                        </View>
 
-                <View style={styles.contactRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.contactName}>{job.delivery_contact_person}</Text>
-                    <Text style={styles.contactPhone}>{job.delivery_contact_phone}</Text>
-                  </View>
-                  <View style={styles.contactActions}>
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => Linking.openURL(`tel:${job.delivery_contact_phone}`)}
-                    >
-                      <Ionicons name="call" size={20} color="#10B981" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.iconButton}
-                      onPress={() => {
-                        const query = encodeURIComponent(`${job.delivery_address}, ${job.delivery_city}`);
-                        const url = Platform.select({
-                          ios: `maps:0,0?q=${query}`,
-                          android: `geo:0,0?q=${query}`
-                        });
-                        Linking.openURL(url!);
-                      }}
-                    >
-                      <Ionicons name="map" size={20} color="#10B981" />
-                    </TouchableOpacity>
-                  </View>
+                        {/* Route Line */}
+                        <View style={styles.routeLineContainer}>
+                            <View style={styles.routeLine} />
+                            <Ionicons name="arrow-down" size={20} color={StainedGlassTheme.colors.goldMedium} />
+                        </View>
+
+                        {/* Delivery Location */}
+                        <View style={styles.locationCard}>
+                            <View style={styles.locationHeader}>
+                                <View style={styles.locationDot}>
+                                    <View style={[styles.dot, styles.deliveryDot]} />
+                                </View>
+                                <Text style={styles.locationLabel}>DELIVERY LOCATION</Text>
+                            </View>
+                            <Text style={styles.address}>{job.delivery_address}</Text>
+                            <Text style={styles.city}>{job.delivery_city}</Text>
+                            <TouchableOpacity 
+                                style={styles.navigationButton}
+                                onPress={() => openMaps(job.delivery_address, job.delivery_city)}
+                            >
+                                <Ionicons name="navigate" size={16} color={StainedGlassTheme.colors.gold} />
+                                <Text style={styles.navigationText}>Navigate to Delivery</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Job Details Section */}
+                    <View style={styles.detailsSection}>
+                        <Text style={styles.sectionTitle}>JOB DETAILS</Text>
+                        
+                        <View style={styles.detailsGrid}>
+                            <View style={styles.detailItem}>
+                                <Ionicons name="cube-outline" size={20} color={StainedGlassTheme.colors.goldLight} />
+                                <View>
+                                    <Text style={styles.detailLabel}>Cargo Type</Text>
+                                    <Text style={styles.detailValue}>
+                                        {job.cargo_description || 'General Cargo'}
+                                    </Text>
+                                </View>
+                            </View>
+                            
+                            <View style={styles.detailItem}>
+                                <Ionicons name="time-outline" size={20} color={StainedGlassTheme.colors.goldLight} />
+                                <View>
+                                    <Text style={styles.detailLabel}>Service Type</Text>
+                                    <Text style={styles.detailValue}>
+                                        {job.service_type?.replace(/_/g, ' ') || 'Standard'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+
+                    {/* Customer Information */}
+                    <View style={styles.customerSection}>
+                        <Text style={styles.sectionTitle}>CUSTOMER</Text>
+                        
+                        <View style={styles.customerCard}>
+                            <View style={styles.customerAvatar}>
+                                <Text style={styles.customerInitial}>
+                                    {job.customer_name?.[0]?.toUpperCase() || 'C'}
+                                </Text>
+                            </View>
+                            <View style={styles.customerInfo}>
+                                <Text style={styles.customerName}>{job.customer_name}</Text>
+                                <Text style={styles.customerLabel}>Client</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={styles.callButton}
+                                onPress={() => callNumber(job.pickup_contact_phone || '')}
+                            >
+                                <Ionicons name="call" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+
+                    {/* Proof of Delivery Section */}
+                    {(job.status === 'IN_TRANSIT' || job.status === 'DELIVERED' || job.proof_of_delivery_image) && (
+                        <View style={styles.podSection}>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>PROOF OF DELIVERY</Text>
+                                {job.status === 'IN_TRANSIT' && (
+                                    <TouchableOpacity onPress={() => setModalVisible(true)}>
+                                        <Text style={styles.uploadText}>
+                                            {job.proof_of_delivery_image ? "Retake" : "Upload"}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            {job.proof_of_delivery_image ? (
+                                <Image 
+                                    source={{ uri: job.proof_of_delivery_image }} 
+                                    style={styles.podImage} 
+                                />
+                            ) : (
+                                <TouchableOpacity 
+                                    style={styles.podPlaceholder}
+                                    onPress={() => setModalVisible(true)}
+                                >
+                                    <Ionicons name="camera" size={32} color={StainedGlassTheme.colors.goldLight} />
+                                    <Text style={styles.podPlaceholderText}>Tap to Upload Photo</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    )}
+                </StainedGlassCard>
+            </ScrollView>
+
+            {/* Action Footer */}
+            {job.status !== 'DELIVERED' && job.status !== 'FAILED' && (
+                <View style={[styles.actionFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
+                    {job.status === 'PENDING' ? (
+                        <TouchableOpacity
+                            style={styles.primaryActionButton}
+                            onPress={() => handleUpdateStatus('IN_TRANSIT')}
+                            disabled={statusUpdating}
+                        >
+                            {statusUpdating ? (
+                                <ActivityIndicator color={StainedGlassTheme.colors.parchment} />
+                            ) : (
+                                <>
+                                    <Text style={styles.primaryActionText}>Start Trip</Text>
+                                    <Ionicons name="arrow-forward" size={20} color={StainedGlassTheme.colors.parchment} />
+                                </>
+                            )}
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity
+                            style={[
+                                styles.primaryActionButton, 
+                                styles.completeButton,
+                                !job.proof_of_delivery_image && styles.disabledButton
+                            ]}
+                            onPress={() => {
+                                if (!job.proof_of_delivery_image) {
+                                    Alert.alert("Required", "Please upload Proof of Delivery before completing.");
+                                    return;
+                                }
+                                handleUpdateStatus('DELIVERED');
+                            }}
+                        >
+                            <Text style={styles.primaryActionText}>Complete Delivery</Text>
+                            <Ionicons name="checkmark-circle" size={20} color={StainedGlassTheme.colors.parchment} />
+                        </TouchableOpacity>
+                    )}
                 </View>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Proof of Delivery Section */}
-        {capturedImage && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Proof of Delivery</Text>
-            <Image source={{ uri: capturedImage }} style={styles.podImage} />
-            <View style={styles.podActions}>
-              <TouchableOpacity
-                style={[styles.podButton, styles.retakeButton]}
-                onPress={handleRetakePhoto}
-                disabled={isUploading}
-              >
-                <Text style={styles.retakeButtonText}>Retake</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.podButton, styles.uploadButton]}
-                onPress={handleUploadPhoto}
-                disabled={isUploading}
-              >
-                {isUploading ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text style={styles.uploadButtonText}>Upload</Text>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.podButton, styles.cancelButton]}
-                onPress={handleCancelUpload}
-                disabled={isUploading}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-            {isUploading && (
-              <View style={styles.uploadingContainer}>
-                <ActivityIndicator size="small" color="#3B82F6" />
-                <Text style={styles.uploadingText}>Uploading...</Text>
-              </View>
             )}
-          </View>
-        )}
 
-        {job.proof_of_delivery_image && !capturedImage && (
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Proof of Delivery</Text>
-            <Image
-              source={{ uri: job.proof_of_delivery_image }}
-              style={styles.podImage}
-            />
-            <View style={styles.uploadedContainer}>
-              <Text style={styles.uploadedText}>✓ Delivered with photo</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Action Buttons */}
-        <View style={styles.actionsContainer}>
-          {status === 'PENDING' && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.startTripButton]}
-              onPress={confirmPickup}
-              disabled={isUpdatingStatus}
+            {/* POD Modal */}
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
             >
-              {isUpdatingStatus ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.actionButtonText}>Confirm Pickup</Text>
-              )}
-            </TouchableOpacity>
-          )}
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Proof of Delivery</Text>
+                            <TouchableOpacity 
+                                style={styles.modalCloseButton}
+                                onPress={() => setModalVisible(false)}
+                            >
+                                <Ionicons name="close" size={24} color={StainedGlassTheme.colors.parchment} />
+                            </TouchableOpacity>
+                        </View>
 
-          {(status === 'PICKED_UP' || status === 'ASSIGNED') && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.startTripButton]}
-              onPress={startTrip}
-              disabled={isUpdatingStatus}
-            >
-              {isUpdatingStatus ? (
-                <ActivityIndicator size="small" color="#ffffff" />
-              ) : (
-                <Text style={styles.actionButtonText}>Start Trip</Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          {status === 'IN_TRANSIT' && !capturedImage && (
-            <View style={styles.inTransitActions}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.photoButton]}
-                onPress={handleTakePhoto}
-              >
-                <Text style={styles.actionButtonText}>📸 Take Delivery Photo</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.actionButton, styles.deliverButton]}
-                onPress={markAsDelivered}
-                disabled={isUpdatingStatus}
-              >
-                {isUpdatingStatus ? (
-                  <ActivityIndicator size="small" color="#ffffff" />
-                ) : (
-                  <Text style={styles.actionButtonText}>🚚 Mark as Delivered</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {status === 'DELIVERED' && (
-            <View style={[styles.statusSection, styles.completedSection]}>
-              <Text style={styles.completedIcon}>✓</Text>
-              <Text style={styles.completedText}>Delivery Completed</Text>
-              <Text style={styles.completedSubtext}>Great job! Delivery has been successfully completed.</Text>
-            </View>
-          )}
-
-          {status === 'FAILED' && (
-            <View style={[styles.statusSection, styles.failedSection]}>
-              <Text style={styles.failedIcon}>⚠️</Text>
-              <Text style={styles.failedText}>Delivery Failed</Text>
-              <Text style={styles.failedSubtext}>Please contact dispatch for assistance</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.footerSpacer} />
-      </ScrollView>
-    </SafeAreaView>
-  );
+                        {podImage ? (
+                            // Preview Mode
+                            <>
+                                <Image source={{ uri: podImage.uri }} style={styles.modalPreview} />
+                                
+                                <View style={styles.modalActions}>
+                                    <TouchableOpacity 
+                                        style={styles.secondaryModalButton}
+                                        onPress={() => setPodImage(null)}
+                                    >
+                                        <Ionicons name="refresh" size={20} color={StainedGlassTheme.colors.parchment} />
+                                        <Text style={styles.secondaryModalText}>Retake</Text>
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity
+                                        style={styles.primaryModalButton}
+                                        onPress={handleUploadPOD}
+                                        disabled={uploading}
+                                    >
+                                        {uploading ? (
+                                            <ActivityIndicator color="#FFFFFF" />
+                                        ) : (
+                                            <Text style={styles.primaryModalText}>Submit</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </>
+                        ) : (
+                            // Camera Mode
+                            <>
+                                <Text style={styles.modalDescription}>
+                                    Please take a clear photo of the delivered package.
+                                </Text>
+                                
+                                <TouchableOpacity 
+                                    style={styles.cameraButton}
+                                    onPress={handleCameraLaunch}
+                                >
+                                    <Ionicons name="camera" size={40} color={StainedGlassTheme.colors.parchment} />
+                                    <Text style={styles.cameraButtonText}>Take Photo</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={styles.cancelButton}
+                                    onPress={() => setModalVisible(false)}
+                                >
+                                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                            </>
+                        )}
+                    </View>
+                </View>
+            </Modal>
+        </ScreenBackground>
+    );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f8fafc',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-    backgroundColor: '#f8fafc',
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#ef4444',
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    color: '#64748B',
-    textAlign: 'center',
-  },
-  // Status Header
-  statusHeader: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
+    container: {
+        flex: 1,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  statusContent: {
-    alignItems: 'center',
-  },
-  statusLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  statusText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1e293b',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  statusPending: {
-    backgroundColor: '#ffedd5',
-    borderLeftWidth: 4,
-    borderLeftColor: '#f59e0b',
-  },
-  statusAssigned: {
-    backgroundColor: '#dbeafe',
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
-  },
-  statusInTransit: {
-    backgroundColor: '#dbeafe',
-    borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
-  },
-  statusDelivered: {
-    backgroundColor: '#dcfce7',
-    borderLeftWidth: 4,
-    borderLeftColor: '#16a34a',
-  },
-  statusFailed: {
-    backgroundColor: '#fee2e2',
-    borderLeftWidth: 4,
-    borderLeftColor: '#dc2626',
-  },
-  // Cards
-  card: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
+    scrollContent: {
+        paddingBottom: Spacing.xxl,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1e293b',
-  },
-  jobIdBadge: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  jobIdText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#475569',
-  },
-  // Info Blocks
-  infoBlock: {
-    marginVertical: 8,
-  },
-  label: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  value: {
-    fontSize: 16,
-    fontWeight: '400',
-    color: '#1e293b',
-    lineHeight: 22,
-  },
-  // Route Information
-  routeContainer: {
-    flexDirection: 'row',
-  },
-  routeDot: {
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#3B82F6',
-  },
-  verticalLine: {
-    width: 2,
-    flex: 1,
-    backgroundColor: '#e2e8f0',
-    marginVertical: 8,
-  },
-  routeAddresses: {
-    flex: 1,
-  },
-  addressSection: {
-    marginBottom: 20,
-  },
-  addressLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#3B82F6',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  addressText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1e293b',
-    marginBottom: 12,
-    lineHeight: 22,
-  },
-  // Proof of Delivery
-  podImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 12,
-    marginVertical: 12,
-  },
-  podActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    gap: 8,
-  },
-  podButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  retakeButton: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-  },
-  retakeButtonText: {
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  uploadButton: {
-    backgroundColor: '#3B82F6',
-  },
-  uploadButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  cancelButton: {
-    backgroundColor: '#ef4444',
-  },
-  cancelButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  uploadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 16,
-    padding: 12,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-  },
-  uploadingText: {
-    marginLeft: 8,
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
-  uploadedContainer: {
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#dcfce7',
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  uploadedText: {
-    color: '#16a34a',
-    fontWeight: '600',
-  },
-  // Action Buttons
-  actionsContainer: {
-    padding: 16,
-    marginTop: 8,
-  },
-  inTransitActions: {
-    gap: 12,
-  },
-  actionButton: {
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
+    loadingContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.md,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  startTripButton: {
-    backgroundColor: '#3B82F6',
-  },
-  photoButton: {
-    backgroundColor: '#10b981',
-  },
-  deliverButton: {
-    backgroundColor: '#3B82F6',
-  },
-  actionButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  // Status Sections
-  statusSection: {
-    padding: 24,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
-  completedSection: {
-    backgroundColor: '#dcfce7',
-    borderLeftWidth: 4,
-    borderLeftColor: '#16a34a',
-  },
-  completedIcon: {
-    fontSize: 32,
-    color: '#16a34a',
-    marginBottom: 8,
-  },
-  completedText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#166534',
-    marginBottom: 4,
-  },
-  completedSubtext: {
-    fontSize: 14,
-    color: '#166534',
-    textAlign: 'center',
-  },
-  failedSection: {
-    backgroundColor: '#fee2e2',
-    borderLeftWidth: 4,
-    borderLeftColor: '#dc2626',
-  },
-  failedIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  failedText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#991b1b',
-    marginBottom: 4,
-  },
-  failedSubtext: {
-    fontSize: 14,
-    color: '#991b1b',
-    textAlign: 'center',
-  },
-  // Contact & Map Styles
-  contactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    padding: 12,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  contactName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 2,
-  },
-  contactPhone: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  contactActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  footerSpacer: {
-    height: 24,
-  },
+    loadingText: {
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.xl,
+    },
+    errorText: {
+        color: StainedGlassTheme.colors.parchment,
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    retryButton: {
+        paddingHorizontal: Spacing.lg,
+        paddingVertical: Spacing.sm,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+        marginTop: Spacing.md,
+    },
+    retryButtonText: {
+        color: StainedGlassTheme.colors.gold,
+        fontWeight: '600',
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.xl,
+        paddingBottom: Spacing.lg,
+    },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+    },
+    headerContent: {
+        flex: 1,
+    },
+    jobId: {
+        ...Typography.h3,
+        color: StainedGlassTheme.colors.parchment,
+        marginBottom: Spacing.xs,
+    },
+    statusContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: Spacing.sm,
+        paddingVertical: Spacing.xs,
+        borderRadius: BorderRadius.sm,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    statusText: {
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+    },
+    date: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontWeight: '500',
+    },
+    mainCard: {
+        marginHorizontal: Spacing.lg,
+        padding: Spacing.lg,
+    },
+    sectionTitle: {
+        fontSize: 12,
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontWeight: '700',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+        marginBottom: Spacing.md,
+    },
+    routeSection: {
+        marginBottom: Spacing.xl,
+    },
+    locationCard: {
+        backgroundColor: 'rgba(28, 25, 48, 0.5)',
+        borderRadius: BorderRadius.md,
+        padding: Spacing.md,
+        marginBottom: Spacing.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    locationHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: Spacing.sm,
+    },
+    locationDot: {
+        marginRight: Spacing.sm,
+    },
+    dot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        borderWidth: 2,
+    },
+    pickupDot: {
+        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+        borderColor: '#3B82F6',
+    },
+    deliveryDot: {
+        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+        borderColor: '#10B981',
+    },
+    locationLabel: {
+        flex: 1,
+        fontSize: 11,
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontWeight: '600',
+        letterSpacing: 0.5,
+    },
+    callButtonSmall: {
+        padding: Spacing.xs,
+        borderRadius: BorderRadius.sm,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    address: {
+        fontSize: 16,
+        color: StainedGlassTheme.colors.parchment,
+        fontWeight: '600',
+        marginBottom: Spacing.xs,
+        lineHeight: 22,
+    },
+    city: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.parchmentLight,
+        marginBottom: Spacing.md,
+    },
+    navigationButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: Spacing.sm,
+        gap: Spacing.sm,
+    },
+    navigationText: {
+        color: StainedGlassTheme.colors.gold,
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    routeLineContainer: {
+        alignItems: 'center',
+        height: 30,
+        marginVertical: Spacing.xs,
+    },
+    routeLine: {
+        width: 2,
+        height: '100%',
+        backgroundColor: StainedGlassTheme.colors.goldMedium,
+        opacity: 0.3,
+    },
+    detailsSection: {
+        marginBottom: Spacing.xl,
+    },
+    detailsGrid: {
+        gap: Spacing.md,
+    },
+    detailItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: Spacing.md,
+        padding: Spacing.md,
+        backgroundColor: 'rgba(28, 25, 48, 0.5)',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    detailLabel: {
+        fontSize: 12,
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    detailValue: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.parchment,
+        fontWeight: '500',
+    },
+    customerSection: {
+        marginBottom: Spacing.xl,
+    },
+    customerCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: Spacing.md,
+        backgroundColor: 'rgba(28, 25, 48, 0.5)',
+        borderRadius: BorderRadius.md,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    customerAvatar: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: 'rgba(255, 223, 186, 0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: Spacing.md,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+    },
+    customerInitial: {
+        fontSize: 20,
+        color: StainedGlassTheme.colors.gold,
+        fontWeight: 'bold',
+    },
+    customerInfo: {
+        flex: 1,
+    },
+    customerName: {
+        fontSize: 16,
+        color: StainedGlassTheme.colors.parchment,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    customerLabel: {
+        fontSize: 14,
+        color: StainedGlassTheme.colors.parchmentLight,
+    },
+    callButton: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: StainedGlassTheme.colors.gold,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    podSection: {
+        marginBottom: Spacing.lg,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.md,
+    },
+    uploadText: {
+        color: StainedGlassTheme.colors.gold,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    podImage: {
+        width: '100%',
+        height: 200,
+        borderRadius: BorderRadius.md,
+        backgroundColor: '#000',
+    },
+    podPlaceholder: {
+        height: 120,
+        borderWidth: 2,
+        borderColor: StainedGlassTheme.colors.goldDark,
+        borderStyle: 'dashed',
+        borderRadius: BorderRadius.md,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 223, 186, 0.05)',
+    },
+    podPlaceholderText: {
+        color: StainedGlassTheme.colors.parchmentLight,
+        marginTop: Spacing.sm,
+        fontSize: 14,
+    },
+    actionFooter: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: Spacing.lg,
+        paddingTop: Spacing.lg,
+        backgroundColor: 'rgba(41, 37, 66, 0.8)',
+        borderTopWidth: 1,
+        borderTopColor: StainedGlassTheme.colors.goldDark,
+    },
+    primaryActionButton: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: Spacing.lg,
+        backgroundColor: StainedGlassTheme.colors.gold,
+        borderRadius: BorderRadius.lg,
+        gap: Spacing.sm,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    completeButton: {
+        backgroundColor: '#34D399',
+    },
+    disabledButton: {
+        opacity: 0.6,
+    },
+    primaryActionText: {
+        color: '#1A0B4E',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: StainedGlassTheme.colors.deepPurple,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: Spacing.lg,
+        paddingBottom: Spacing.xxl,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: Spacing.lg,
+        paddingBottom: Spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    modalTitle: {
+        ...Typography.h4,
+        color: StainedGlassTheme.colors.parchment,
+    },
+    modalCloseButton: {
+        padding: Spacing.xs,
+    },
+    modalDescription: {
+        color: StainedGlassTheme.colors.parchmentLight,
+        fontSize: 16,
+        textAlign: 'center',
+        marginBottom: Spacing.xl,
+        lineHeight: 24,
+    },
+    cameraButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Spacing.lg,
+        backgroundColor: StainedGlassTheme.colors.gold,
+        borderRadius: BorderRadius.lg,
+        gap: Spacing.md,
+        marginBottom: Spacing.md,
+    },
+    cameraButtonText: {
+        color: '#1A0B4E',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    cancelButton: {
+        padding: Spacing.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+    },
+    cancelButtonText: {
+        color: StainedGlassTheme.colors.parchment,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    modalPreview: {
+        width: '100%',
+        height: 300,
+        borderRadius: BorderRadius.lg,
+        marginBottom: Spacing.lg,
+        backgroundColor: '#000',
+    },
+    modalActions: {
+        flexDirection: 'row',
+        gap: Spacing.md,
+    },
+    secondaryModalButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: Spacing.lg,
+        backgroundColor: 'rgba(255, 223, 186, 0.1)',
+        borderRadius: BorderRadius.lg,
+        borderWidth: 1,
+        borderColor: StainedGlassTheme.colors.goldDark,
+        gap: Spacing.sm,
+    },
+    secondaryModalText: {
+        color: StainedGlassTheme.colors.parchment,
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    primaryModalButton: {
+        flex: 1.5,
+        padding: Spacing.lg,
+        backgroundColor: StainedGlassTheme.colors.gold,
+        borderRadius: BorderRadius.lg,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    primaryModalText: {
+        color: '#1A0B4E',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
 });

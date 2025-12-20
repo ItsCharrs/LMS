@@ -234,9 +234,11 @@ class MyJobsShipmentSerializer(serializers.ModelSerializer):
     A lightweight, "flat" serializer for the 'My Assigned Jobs' list.
     It provides just enough information for the driver's mobile app list view.
     """
-    job_id = serializers.UUIDField(source='job.id', read_only=True)
+    job_id = serializers.IntegerField(source='job.job_number', read_only=True)
     pickup_address = serializers.CharField(source='job.pickup_address', read_only=True)
+    pickup_city = serializers.CharField(source='job.pickup_city', read_only=True)
     delivery_address = serializers.CharField(source='job.delivery_address', read_only=True)
+    delivery_city = serializers.CharField(source='job.delivery_city', read_only=True)
     requested_pickup_date = serializers.DateTimeField(source='job.requested_pickup_date', read_only=True)
     customer_name = serializers.CharField(source='job.customer.get_full_name', read_only=True)
 
@@ -248,7 +250,9 @@ class MyJobsShipmentSerializer(serializers.ModelSerializer):
             'job_id',
             'customer_name',
             'pickup_address',
+            'pickup_city',
             'delivery_address',
+            'delivery_city',
             'requested_pickup_date',
             'proof_of_delivery_image'
         ]

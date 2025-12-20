@@ -15,6 +15,9 @@ class Job(BaseModel):
         PALLET_DELIVERY = 'PALLET_DELIVERY', 'Pallet Delivery'
         SMALL_DELIVERIES = 'SMALL_DELIVERIES', 'Small Deliveries'
 
+    # Human-readable job number (auto-incrementing)
+    job_number = models.PositiveIntegerField(unique=True, editable=False, null=True, blank=True)
+
     customer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='jobs')
     
     service_type = models.CharField(
@@ -42,8 +45,18 @@ class Job(BaseModel):
 
     # --- THE 'status' FIELD HAS BEEN REMOVED FROM THIS MODEL ---
 
+    def save(self, *args, **kwargs):
+        if self.job_number is None:
+            # Get the highest job number and increment
+            last_job = Job.objects.order_by('-job_number').first()
+            if last_job and last_job.job_number:
+                self.job_number = last_job.job_number + 1
+            else:
+                self.job_number = 1001  # Start from 1001
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"Job {self.id} for {self.customer.username if self.customer else 'N/A'}"
+        return f"Job #{self.job_number or self.id} for {self.customer.username if self.customer else 'N/A'}"
 
 
 class JobTimeline(BaseModel):

@@ -12,6 +12,7 @@ class DriverJobViewSet(viewsets.ReadOnlyModelViewSet):
     """
     serializer_class = DriverJobSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'job_number'
 
     def get_queryset(self):
         # Filter jobs assigned to the current driver via Shipment

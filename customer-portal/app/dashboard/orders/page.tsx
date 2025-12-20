@@ -146,7 +146,9 @@ export default function OrdersPage() {
                                 {/* Order Info */}
                                 <div className="flex-1 space-y-4">
                                     <div className="flex items-center gap-3 flex-wrap">
-                                        <h3 className="text-lg font-bold text-foreground">Order #{order.id.slice(0, 8)}...</h3>
+                                        <h3 className="text-lg font-bold text-foreground">
+                                            Order #{order.job_number ? order.job_number : `${order.id.slice(0, 8)}...`}
+                                        </h3>
                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
                                             {order.status.replace('_', ' ')}
                                         </span>
