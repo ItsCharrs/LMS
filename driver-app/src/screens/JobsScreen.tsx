@@ -15,7 +15,7 @@ import { useApi } from '../hooks/useApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, TabParamList } from '../navigation/AppNavigator';
-import { ShipmentListItem } from '../types';
+import { ShipmentListItem, PaginatedResponse } from '../types';
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { StainedGlassCard } from '../components/StainedGlassCard';
 import { SSLogisticsLogo } from '../components/SSLogisticsLogo';
@@ -176,8 +176,11 @@ const getStatusConfig = (status: ShipmentListItem['status']) => {
 
 export default function JobsScreen() {
   const { user, logout } = useAuth();
-  const { data: assignedJobs, error, isLoading, mutate } = useApi<ShipmentListItem[]>('/driver/jobs/');
+  const { data: response, error, isLoading, mutate } = useApi<PaginatedResponse<ShipmentListItem>>('/driver/jobs/');
   const navigation = useNavigation<JobsScreenNavigationProp>();
+
+  // Extract jobs array from paginated response
+  const assignedJobs = response?.results || [];
 
   const getTimeBasedGreeting = () => {
     const hour = new Date().getHours();
@@ -189,7 +192,7 @@ export default function JobsScreen() {
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'in_transit'>('all');
 
   // Filter to only show active jobs (not delivered or cancelled)
-  const activeJobs = assignedJobs?.filter(
+  const activeJobs = assignedJobs.filter(
     (job) => !['DELIVERED', 'COMPLETED', 'CANCELLED', 'FAILED'].includes(job.status)
   ) || [];
 
