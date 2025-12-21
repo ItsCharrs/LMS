@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "app/_global-error/page.js",
+  "/_not-found/page": "app/_not-found/page.js",
+  "/book/page": "app/book/page.js",
+  "/contact/page": "app/contact/page.js",
+  "/dashboard/addresses/page": "app/dashboard/addresses/page.js",
+  "/dashboard/orders/page": "app/dashboard/orders/page.js",
+  "/dashboard/page": "app/dashboard/page.js",
+  "/dashboard/payment/page": "app/dashboard/payment/page.js",
+  "/dashboard/settings/page": "app/dashboard/settings/page.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/my-jobs/page": "app/my-jobs/page.js",
+  "/page": "app/page.js",
+  "/profile/page": "app/profile/page.js",
+  "/services/page": "app/services/page.js",
+  "/track/[trackingId]/page": "app/track/[trackingId]/page.js",
+  "/track/page": "app/track/page.js"
+}

@@ -53,21 +53,35 @@ export function QuoteCalculator() {
 
         try {
             const { default: apiClient } = await import('@/lib/api');
-            const response = await apiClient.post('/quotes/instant-estimate/', data);
+
+            // Map package type to service type
+            const serviceTypeMap: Record<string, string> = {
+                'small': 'SMALL_DELIVERIES',
+                'medium': 'RESIDENTIAL_MOVING',
+                'large': 'OFFICE_RELOCATION',
+                'pallet': 'PALLET_DELIVERY'
+            };
+
+            const response = await apiClient.post('/quotes/calculate/', {
+                origin: data.origin,
+                destination: data.destination,
+                service_type: serviceTypeMap[data.packageType] || 'SMALL_DELIVERIES',
+                weight: parseFloat(data.weight)
+            });
 
             setEstimate({
-                price: response.data.price,
-                estimatedDays: response.data.estimatedDays,
-                distance: response.data.distance
+                price: parseFloat(response.data.estimated_price),
+                estimatedDays: response.data.estimated_days,
+                distance: parseFloat(response.data.distance)
             });
         } catch (error) {
             console.error('Failed to get quote:', error);
-            // In a real app we'd set an error state here, for now alert
             alert("Failed to calculate quote. Please try again.");
         } finally {
             setIsCalculating(false);
         }
     };
+
 
 
     return (

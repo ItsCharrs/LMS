@@ -66,4 +66,10 @@ urlpatterns = [
     path("billing/", include("apps.billing.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("reports/", include("apps.reports.urls")),
+    
+    # Quote calculator
+    path("quotes/", include("apps.quotes.urls")),
+    
+    # Public tracking (no auth)
+    path("tracking/<str:tracking_id>/", TrackingViewSet.as_view({'get': 'retrieve'}), name='tracking-detail'),
 ]

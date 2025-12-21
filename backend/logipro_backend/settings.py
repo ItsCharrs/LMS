@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "apps.notifications.apps.NotificationsConfig",
     "apps.reports.apps.ReportsConfig",
     "apps.quoting.apps.QuotingConfig",
+    "apps.quotes",
 ]
 
 MIDDLEWARE = [

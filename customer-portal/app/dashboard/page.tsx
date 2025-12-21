@@ -233,16 +233,14 @@ export default function DashboardPage() {
                         <div className="p-6">
                             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Detailed Tracking</h3>
                             <p className="text-sm text-muted-foreground mb-6">
-                                Enter a tracking number to see exactly where your freight is right now.
+                                Track all your active shipments in one place.
                             </p>
-                            <div className="flex gap-2">
-                                <Button variant="outline" className="w-full justify-start text-muted-foreground bg-white dark:bg-gray-900">
-                                    # Order ID...
-                                </Button>
-                                <Button size="icon" className="bg-blue-600 hover:bg-blue-700">
-                                    <ArrowRight className="w-4 h-4" />
-                                </Button>
-                            </div>
+                            <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                                <Link href="/dashboard/orders">
+                                    <Package className="w-4 h-4 mr-2" />
+                                    View My Orders
+                                </Link>
+                            </Button>
                         </div>
                     </div>
 
@@ -254,8 +252,10 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground mb-4">
                             Planning a residential move? Get a comprehensive quote with our new AI-powered estimator.
                         </p>
-                        <Button variant="ghost" className="w-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 group">
-                            Get Moving Quote <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                        <Button asChild variant="ghost" className="w-full text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 group">
+                            <Link href="/book">
+                                Get Moving Quote <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                            </Link>
                         </Button>
                     </div>
 
@@ -267,8 +267,10 @@ export default function DashboardPage() {
                         <p className="text-sm text-muted-foreground mb-4">
                             Express courier services for documents and small packages. Same-day delivery available.
                         </p>
-                        <Button variant="ghost" className="w-full text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 group">
-                            Book Courier <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                        <Button asChild variant="ghost" className="w-full text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 group">
+                            <Link href="/book">
+                                Book Courier <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                            </Link>
                         </Button>
                     </div>
                 </motion.div>

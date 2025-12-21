@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../../../app/my-jobs/page.tsx"],"sourcesContent":["import { redirect } from 'next/navigation';\n\nexport default function MyJobsRedirect() {\n    redirect('/dashboard/orders');\n}\n"],"names":[],"mappings":"qUAAA,EAAA,CAAA,CAAA,OAAA,IAAA,EAAA,EAAA,CAAA,CAAA,OAEe,SAAS,IACpB,CAAA,EAAA,EAAA,QAAA,AAAQ,EAAC,oBACb"}

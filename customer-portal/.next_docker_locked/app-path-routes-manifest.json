@@ -1,0 +1,18 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/book/page": "/book",
+  "/contact/page": "/contact",
+  "/dashboard/addresses/page": "/dashboard/addresses",
+  "/dashboard/orders/page": "/dashboard/orders",
+  "/dashboard/page": "/dashboard",
+  "/dashboard/payment/page": "/dashboard/payment",
+  "/dashboard/settings/page": "/dashboard/settings",
+  "/favicon.ico/route": "/favicon.ico",
+  "/my-jobs/page": "/my-jobs",
+  "/page": "/",
+  "/profile/page": "/profile",
+  "/services/page": "/services",
+  "/track/[trackingId]/page": "/track/[trackingId]",
+  "/track/page": "/track"
+}
