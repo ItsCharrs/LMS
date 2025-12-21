@@ -49,24 +49,31 @@ export function QuoteCalculator() {
 
     const calculateEstimate = async (data: QuoteFormData) => {
         setIsCalculating(true);
-        setEstimate(null); // Clear previous estimate
+        setEstimate(null);
 
         try {
             const { default: apiClient } = await import('@/lib/api');
 
-            // Map package type to service type
-            const serviceTypeMap: Record<string, string> = {
-                'small': 'SMALL_DELIVERIES',
-                'medium': 'RESIDENTIAL_MOVING',
-                'large': 'OFFICE_RELOCATION',
-                'pallet': 'PALLET_DELIVERY'
+            // Map package type to service_type and job_type
+            const serviceTypeMap: Record<string, { service: string; jobType: string }> = {
+                'small': { service: 'SMALL_DELIVERIES', jobType: 'RESIDENTIAL' },
+                'medium': { service: 'RESIDENTIAL_MOVING', jobType: 'RESIDENTIAL' },
+                'large': { service: 'OFFICE_RELOCATION', jobType: 'COMMERCIAL' },
+                'pallet': { service: 'PALLET_DELIVERY', jobType: 'COMMERCIAL' }
             };
+
+            const mapping = serviceTypeMap[data.packageType] || { service: 'SMALL_DELIVERIES', jobType: 'COMMERCIAL' };
+            const weight = parseFloat(data.weight);
 
             const response = await apiClient.post('/quotes/calculate/', {
                 origin: data.origin,
                 destination: data.destination,
-                service_type: serviceTypeMap[data.packageType] || 'SMALL_DELIVERIES',
-                weight: parseFloat(data.weight)
+                job_type: mapping.jobType,
+                service_type: mapping.service,
+                weight: weight,
+                // Add estimated metrics based on package type
+                room_count: mapping.jobType === 'RESIDENTIAL' && data.packageType === 'medium' ? 3 : undefined,
+                pallet_count: mapping.jobType === 'COMMERCIAL' && data.packageType === 'pallet' ? Math.ceil(weight / 500) : undefined,
             });
 
             setEstimate({
@@ -83,7 +90,6 @@ export function QuoteCalculator() {
     };
 
 
-
     return (
         <div className="bg-card rounded-2xl shadow-xl border border-border p-6 lg:p-8">
             <div className="flex items-center gap-3 mb-6">
@@ -92,7 +98,7 @@ export function QuoteCalculator() {
                 </div>
                 <div>
                     <h3 className="text-2xl font-bold text-foreground">Instant Quote</h3>
-                    <p className="text-sm text-muted-foreground">Get your price in seconds</p>
+                    <p className="text-sm text-muted-foreground">Enhanced pricing with metrics</p>
                 </div>
             </div>
 
@@ -204,7 +210,7 @@ export function QuoteCalculator() {
                         </div>
                         <div className="text-right">
                             <p className="text-sm text-muted-foreground mb-1">Delivery Time</p>
-                            <p className="text-2xl font-semibold text-foreground">{estimate.estimatedDays} days</p>
+                            <p className="text-2xl font-semibold text-foreground">{estimate.estimatedDays}</p>
                         </div>
                     </div>
                     <div className="pt-4 border-t border-primary/20">

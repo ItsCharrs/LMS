@@ -405,7 +405,7 @@ function MetricsStep() {
             render={({ field }) => (
               <FormItem className="flex items-center space-x-3 space-y-0 p-4 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/10">
                 <FormControl>
-                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                  <Checkbox checked={field.value} onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(e.target.checked)} />
                 </FormControl>
                 <div className="flex-1">
                   <FormLabel className="text-sm font-medium flex items-center gap-2">
