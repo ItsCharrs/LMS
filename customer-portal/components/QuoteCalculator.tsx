@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 
 const quoteSchema = z.object({
+    jobType: z.enum(['RESIDENTIAL', 'COMMERCIAL'], { required_error: 'Please select a job type' }),
     origin: z.string().min(3, 'Origin is required'),
     destination: z.string().min(3, 'Destination is required'),
     packageType: z.string().min(1, 'Please select a package type'),
@@ -103,6 +104,36 @@ export function QuoteCalculator() {
             </div>
 
             <form onSubmit={handleSubmit(calculateEstimate)} className="space-y-5">
+                {/* Job Type Selector */}
+                <div>
+                    <Label className="text-muted-foreground font-medium mb-3 block">Job Type</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setValue('jobType', 'RESIDENTIAL')}
+                            className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${jobType === 'RESIDENTIAL'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-input hover:border-primary/50'
+                                }`}
+                        >
+                            🏠 Residential
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setValue('jobType', 'COMMERCIAL')}
+                            className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${jobType === 'COMMERCIAL'
+                                ? 'border-primary bg-primary/10 text-primary'
+                                : 'border-input hover:border-primary/50'
+                                }`}
+                        >
+                            🏢 Commercial
+                        </button>
+                    </div>
+                    {errors.jobType && (
+                        <p className="text-destructive text-sm mt-1">{errors.jobType?.message}</p>
+                    )}
+                </div>
+
                 {/* Origin */}
                 <div>
                     <Label htmlFor="origin" className="text-muted-foreground font-medium mb-2 flex items-center gap-2">
@@ -137,24 +168,31 @@ export function QuoteCalculator() {
                     )}
                 </div>
 
-                {/* Package Type */}
+                {/* Package Type - Conditional based on Job Type */}
                 <div>
                     <Label htmlFor="packageType" className="text-muted-foreground font-medium mb-2 flex items-center gap-2">
                         <Package className="h-4 w-4 text-primary" />
-                        Package Type
+                        {jobType === 'RESIDENTIAL' ? 'Service Type' : 'Load Type'}
                     </Label>
                     <Select
                         onValueChange={(value) => setValue('packageType', value)}
                         value={packageType}
                     >
                         <SelectTrigger className="h-12 border-input focus:border-primary focus:ring-primary">
-                            <SelectValue placeholder="Select package size" />
+                            <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="small">Small (&lt; 50 lbs)</SelectItem>
-                            <SelectItem value="medium">Medium (50-150 lbs)</SelectItem>
-                            <SelectItem value="large">Large (150-500 lbs)</SelectItem>
-                            <SelectItem value="pallet">Pallet (500+ lbs)</SelectItem>
+                            {jobType === 'RESIDENTIAL' ? (
+                                <>
+                                    <SelectItem value="small">Small Move (&lt; 50 lbs)</SelectItem>
+                                    <SelectItem value="medium">Full Home (50-500 lbs)</SelectItem>
+                                </>
+                            ) : (
+                                <>
+                                    <SelectItem value="large">LTL Freight (150-1000 lbs)</SelectItem>
+                                    <SelectItem value="pallet">Palletized (500+ lbs)</SelectItem>
+                                </>
+                            )}
                         </SelectContent>
                     </Select>
                     {errors.packageType && (
