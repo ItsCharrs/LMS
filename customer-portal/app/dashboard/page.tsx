@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Package, TrendingUp, Clock, MapPin, ArrowRight, Truck, Plus, Calendar, ChevronRight } from 'lucide-react';
+import { Package, TrendingUp, Clock, MapPin, ArrowRight, Truck, Plus, Calendar, ChevronRight, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/lib/api';
@@ -212,8 +212,8 @@ export default function DashboardPage() {
                                                 <div className="text-right hidden md:block">
                                                     <div className="text-xs text-muted-foreground">Estimated Delivery</div>
                                                     <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                                        {order.estimated_delivery_date
-                                                            ? format(new Date(order.estimated_delivery_date), 'MMM d, yyyy')
+                                                        {order.estimated_delivery
+                                                            ? format(new Date(order.estimated_delivery), 'MMM d, yyyy')
                                                             : 'Pending Schedule'}
                                                     </div>
                                                 </div>
@@ -277,8 +277,4 @@ export default function DashboardPage() {
     );
 }
 // Helper component for icon import
-function CheckCircle({ className }: { className?: string }) {
-    return (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
-    )
-}
+
