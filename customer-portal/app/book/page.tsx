@@ -1,104 +1,72 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { useForm, FormProvider, useFormContext, ControllerRenderProps } from 'react-hook-form';
+import React, { useState } from 'react';
+import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useAuth } from '@/context/AuthContext';
 import apiClient from '@/lib/api';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
-import { AxiosError } from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { bookingSchema, BookingFormData } from '@/lib/validators';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { ArrowLeft, ArrowRight, Truck, MapPin, CheckCircle, Package, Building2, Home, Calendar, CreditCard, User, Phone } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Package, MapPin, Building2, Home, Layers, AlertTriangle, Hash } from 'lucide-react';
 import AuthModal from '@/components/Auth/AuthModal';
 import { PremiumCard } from '@/components/shared/PremiumCard';
-
-const bookingSchema = z.object({
-  service_type: z.enum(['RESIDENTIAL_MOVING', 'OFFICE_RELOCATION', 'PALLET_DELIVERY', 'SMALL_DELIVERIES']),
-  cargo_description: z.string().min(10, "Please provide a more detailed description (at least 10 chars)."),
-
-  // Pickup fields
-  pickup_address: z.string().min(5, "Pickup address is required."),
-  pickup_contact_person: z.string().min(2, { message: "Contact name required." }),
-  pickup_contact_phone: z.string().min(10, { message: "Valid phone number required." }),
-
-  // Delivery fields
-  delivery_address: z.string().min(5, "Delivery address is required."),
-  delivery_contact_person: z.string().min(2, { message: "Contact name required." }),
-  delivery_contact_phone: z.string().min(10, { message: "Valid phone number required." }),
-
-  requested_pickup_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
-    message: "Please select a valid date and time.",
-  }),
-});
-
-type BookingFormData = z.infer<typeof bookingSchema>;
+import { Checkbox } from '@/components/ui/checkbox';
 
 const steps = [
-  { id: 1, name: 'Service', fields: ['service_type', 'cargo_description'] as const, icon: Package },
-  { id: 2, name: 'Logistics', fields: ['pickup_address', 'pickup_contact_person', 'pickup_contact_phone', 'delivery_address', 'delivery_contact_person', 'delivery_contact_phone', 'requested_pickup_date'] as const, icon: MapPin },
-  { id: 3, name: 'Confirm', icon: CheckCircle },
+  { id: 1, name: 'Job Type', icon: Layers },
+  { id: 2, name: 'Service', icon: Package },
+  { id: 3, name: 'Metrics', icon: Hash },
+  { id: 4, name: 'Logistics', icon: MapPin },
+  { id: 5, name: 'Confirm', icon: CheckCircle },
 ];
 
-const serviceOptions = {
-  RESIDENTIAL_MOVING: { name: "Residential Moving", description: "Full home moving service with crew", icon: Home },
-  OFFICE_RELOCATION: { name: "Office Relocation", description: "Secure transport for business assets", icon: Building2 },
-  PALLET_DELIVERY: { name: "Pallet Delivery", description: "Warehouse to warehouse freight", icon: Package },
-  SMALL_DELIVERIES: { name: "Small Deliveries", description: "Quick courier for small items", icon: Truck },
-};
-
-export default function BookingPage() {
+export default function EnhancedBookingPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [direction, setDirection] = useState(0); // 1 for next, -1 for prev
+  const [direction, setDirection] = useState(0);
+  const { backendUser } = useAuth();
+  const router = useRouter();
 
   const methods = useForm<BookingFormData>({
     resolver: zodResolver(bookingSchema),
     mode: 'onTouched',
     defaultValues: {
+      job_type: undefined,
       service_type: undefined,
       cargo_description: "",
       pickup_address: "",
+      pickup_city: "",
       pickup_contact_person: "",
       pickup_contact_phone: "",
       delivery_address: "",
+      delivery_city: "",
       delivery_contact_person: "",
       delivery_contact_phone: "",
       requested_pickup_date: "",
-    },
+    } as any,
   });
-  const { trigger, getValues } = methods;
 
-  // Safe modal handling
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (isAuthModalOpen) setIsAuthModalOpen(false);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const { trigger, getValues, watch } = methods;
+  const jobType = watch('job_type');
 
   const nextStep = async () => {
-    const fields = steps[currentStep - 1].fields;
-    if (fields) {
-      const output = await trigger(fields, { shouldFocus: true });
+    const fieldsToValidate = getStepFields(currentStep);
+    if (fieldsToValidate.length > 0) {
+      const output = await trigger(fieldsToValidate);
       if (!output) return;
     }
 
-    if (currentStep === 2) {
-      const values = getValues();
-      let price = 50.00;
-      if (values.service_type === 'RESIDENTIAL_MOVING') price += 250.00;
-      if (values.service_type === 'OFFICE_RELOCATION') price += 400.00;
-      if (values.service_type === 'PALLET_DELIVERY') price += 100.00;
-      setEstimatedPrice(price);
+    if (currentStep === 4) {
+      // Calculate estimate before confirmation
+      await calculateEstimate();
     }
 
     if (currentStep < steps.length) {
@@ -114,43 +82,72 @@ export default function BookingPage() {
     }
   };
 
+  const getStepFields = (step: number): (keyof BookingFormData)[] => {
+    switch (step) {
+      case 1: return ['job_type'];
+      case 2: return ['service_type', 'cargo_description'];
+      case 3:
+        if (jobType === 'RESIDENTIAL') {
+          return ['room_count'];
+        } else if (jobType === 'COMMERCIAL') {
+          return ['weight_lbs'];
+        }
+        return [];
+      case 4: return ['pickup_address', 'pickup_city', 'pickup_contact_person', 'pickup_contact_phone',
+        'delivery_address', 'delivery_city', 'delivery_contact_person', 'delivery_contact_phone', 'requested_pickup_date'];
+      default: return [];
+    }
+  };
+
+  const calculateEstimate = async () => {
+    const values = getValues();
+    try {
+      const response = await apiClient.post('/quotes/calculate/', {
+        origin: values.pickup_city,
+        destination: values.delivery_city,
+        job_type: values.job_type,
+        service_type: values.service_type,
+        weight: values.job_type === 'RESIDENTIAL' ? undefined : values.weight_lbs,
+        room_count: values.job_type === 'RESIDENTIAL' ? values.room_count : undefined,
+        pallet_count: values.job_type === 'COMMERCIAL' ? values.pallet_count : undefined,
+      });
+      setEstimatedPrice(parseFloat(response.data.estimated_price));
+    } catch (error) {
+      console.error('Failed to get estimate:', error);
+      setEstimatedPrice(299.99); // Fallback
+    }
+  };
+
+  const onSubmit = async (data: BookingFormData) => {
+    if (!backendUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    try {
+      await apiClient.post('/book/', data);
+      toast.success('Booking submitted successfully!');
+      router.push('/dashboard');
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to submit booking');
+    }
+  };
+
   const variants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 50 : -50,
-      opacity: 0
-    }),
-    center: {
-      zIndex: 1,
-      x: 0,
-      opacity: 1
-    },
-    exit: (direction: number) => ({
-      zIndex: 0,
-      x: direction < 0 ? 50 : -50,
-      opacity: 0
-    })
+    enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
+    center: { zIndex: 1, x: 0, opacity: 1 },
+    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 50 : -50, opacity: 0 })
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-12 px-4 transition-colors duration-300">
-      {/* Background Decor */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
-      </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-12 px-4">
+      {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />}
 
-      {isAuthModalOpen && (
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-        />
-      )}
-
-      <div className="relative z-10 container mx-auto max-w-3xl">
+      <div className="container mx-auto max-w-3xl">
         <FormProvider {...methods}>
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight mb-2">Book a Shipment</h1>
-            <p className="text-muted-foreground">Get an instant quote and reliable logistics in minutes.</p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Book a Shipment</h1>
+            <p className="text-muted-foreground">Complete all fields for an accurate quote</p>
           </div>
 
           {/* Stepper */}
@@ -163,16 +160,14 @@ export default function BookingPage() {
 
                 return (
                   <div key={step.id} className="flex items-center">
-                    <div className={`
-                                     flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300
-                                     ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' :
-                        isActive ? 'bg-primary border-primary text-white shadow-lg shadow-primary/30 scale-110' :
-                          'bg-white dark:bg-slate-900 border-gray-200 dark:border-gray-700 text-gray-400'}
-                                 `}>
+                    <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all duration-300
+                      ${isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' :
+                        isActive ? 'bg-primary border-primary text-white shadow-lg scale-110' :
+                          'bg-white dark:bg-slate-900 border-gray-200 text-gray-400'}`}>
                       {isCompleted ? <CheckCircle className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                     </div>
                     {index < steps.length - 1 && (
-                      <div className={`w-12 h-0.5 mx-2 ${isCompleted ? 'bg-emerald-500' : 'bg-gray-200 dark:bg-gray-800'}`}></div>
+                      <div className={`w-12 h-0.5 mx-2 ${isCompleted ? 'bg-emerald-500' : 'bg-gray-200'}`}></div>
                     )}
                   </div>
                 );
@@ -180,48 +175,32 @@ export default function BookingPage() {
             </div>
           </div>
 
-          <PremiumCard className="p-0 overflow-hidden bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-white/20 shadow-2xl">
-            <div className="p-8">
-              <AnimatePresence mode="wait" custom={direction}>
-                <motion.div
-                  key={currentStep}
-                  custom={direction}
-                  variants={variants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                >
-                  {currentStep === 1 && <Step1ServiceDetails />}
-                  {currentStep === 2 && <Step2Location />}
-                  {currentStep === 3 && (
-                    <Step3Confirm
-                      price={estimatedPrice}
-                      onLoginRequired={() => setIsAuthModalOpen(true)}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Footer Actions */}
-            <div className="bg-gray-50/50 dark:bg-slate-950/50 p-6 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center">
-              <Button
-                variant="ghost"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-                className="text-muted-foreground hover:text-foreground"
+          <PremiumCard className="p-8">
+            <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                key={currentStep}
+                custom={direction}
+                variants={variants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
               >
-                <ArrowLeft className="mr-2 h-4 w-4" /> Back
-              </Button>
+                {currentStep === 1 && <JobTypeStep />}
+                {currentStep === 2 && <ServiceStep />}
+                {currentStep === 3 && <MetricsStep />}
+                {currentStep === 4 && <LogisticsStep />}
+                {currentStep === 5 && <ConfirmStep price={estimatedPrice} onSubmit={methods.handleSubmit(onSubmit)} />}
+              </motion.div>
+            </AnimatePresence>
 
+            <div className="flex justify-between mt-8 pt-6 border-t border-gray-200 dark:border-gray-800">
+              <Button onClick={prevStep} disabled={currentStep === 1} variant="outline" size="lg">
+                <ArrowLeft className="w-4 h-4 mr-2" /> Back
+              </Button>
               {currentStep < steps.length && (
-                <Button
-                  onClick={nextStep}
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
-                >
-                  Next Step <ArrowRight className="ml-2 h-4 w-4" />
+                <Button onClick={nextStep} size="lg">
+                  Next <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               )}
             </div>
@@ -232,239 +211,295 @@ export default function BookingPage() {
   );
 }
 
-// ... Subcomponents ...
-
-const ThemeFormField = ({ name, label, children }: { name: keyof BookingFormData, label: string, children: (field: ControllerRenderProps<BookingFormData, keyof BookingFormData>) => React.ReactNode }) => {
+// Step Components
+function JobTypeStep() {
   const { control } = useFormContext<BookingFormData>();
-  return (
-    <FormField
-      control={control}
-      name={name}
-      render={({ field }) => (
-        <FormItem className="mb-5">
-          <FormLabel className="text-foreground font-medium text-sm flex items-center gap-2">
-            {label}
-          </FormLabel>
-          <FormControl>
-            <div className="relative">
-              {children(field)}
-            </div>
-          </FormControl>
-          <FormMessage className="text-red-500 text-xs mt-1 font-medium" />
-        </FormItem>
-      )}
-    />
-  )
-}
-
-function Step1ServiceDetails() {
-  const { setValue, watch } = useFormContext<BookingFormData>();
-  const selectedService = watch('service_type');
-
-  return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Select a Service</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {Object.entries(serviceOptions).map(([key, { name, description, icon: Icon }]) => (
-            <div
-              key={key}
-              onClick={() => setValue('service_type', key as any, { shouldValidate: true })}
-              className={`
-                        cursor-pointer p-4 rounded-xl border-2 transition-all duration-200 relative overflow-hidden group
-                        ${selectedService === key
-                  ? 'border-primary bg-primary/5 shadow-md'
-                  : 'border-gray-200 dark:border-gray-800 hover:border-primary/50 hover:shadow-sm bg-white dark:bg-slate-950'}
-                    `}
-            >
-              <div className="flex items-start gap-4">
-                <div className={`p-3 rounded-lg ${selectedService === key ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 group-hover:text-primary transition-colors'}`}>
-                  <Icon className="w-6 h-6" />
-                </div>
-                <div>
-                  <h3 className={`font-bold ${selectedService === key ? 'text-primary' : 'text-gray-900 dark:text-white'}`}>{name}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{description}</p>
-                </div>
-              </div>
-              {selectedService === key && (
-                <div className="absolute top-2 right-2 text-primary">
-                  <CheckCircle className="w-5 h-5 fill-primary/20" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-        {/* Hidden select for hook form registration if needed, or just let custom onClick handle it */}
-        <div className="h-0 overflow-hidden">
-          <ThemeFormField name="service_type" label="">
-            {(field) => <Input {...field} />}
-          </ThemeFormField>
-        </div>
-      </div>
-
-      <ThemeFormField name="cargo_description" label="Cargo Description">
-        {(field) => (
-          <Textarea
-            rows={4}
-            placeholder="Describe your items in detail (e.g. '1 large oak dining table, 6 chairs, 10 medium boxes')"
-            {...field}
-            className="bg-white dark:bg-slate-950 border-gray-200 dark:border-gray-800 focus:border-primary focus:ring-primary/20 resize-none"
-          />
-        )}
-      </ThemeFormField>
-    </div>
-  );
-}
-
-function Step2Location() {
-  return (
-    <div className="space-y-8">
-      <div className="grid md:grid-cols-2 gap-8">
-        {/* Pickup Column */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
-            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-blue-600" />
-            </div>
-            <h3 className="font-bold text-gray-900 dark:text-white">Pickup Details</h3>
-          </div>
-
-          <ThemeFormField name="pickup_address" label="Address">
-            {(field) => <Input placeholder="123 Pickup St, City, Country" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-          </ThemeFormField>
-
-          <div className="grid grid-cols-2 gap-3">
-            <ThemeFormField name="pickup_contact_person" label="Contact Name">
-              {(field) => <Input placeholder="John Doe" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-            </ThemeFormField>
-            <ThemeFormField name="pickup_contact_phone" label="Phone">
-              {(field) => <Input placeholder="(555) 123-4567" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-            </ThemeFormField>
-          </div>
-        </div>
-
-        {/* Delivery Column */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-gray-100 dark:border-gray-800">
-            <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-emerald-600" />
-            </div>
-            <h3 className="font-bold text-gray-900 dark:text-white">Delivery Details</h3>
-          </div>
-
-          <ThemeFormField name="delivery_address" label="Address">
-            {(field) => <Input placeholder="456 Dropoff Ave, City, Country" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-          </ThemeFormField>
-
-          <div className="grid grid-cols-2 gap-3">
-            <ThemeFormField name="delivery_contact_person" label="Contact Name">
-              {(field) => <Input placeholder="Jane Smith" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-            </ThemeFormField>
-            <ThemeFormField name="delivery_contact_phone" label="Phone">
-              {(field) => <Input placeholder="(555) 987-6543" {...field} className="h-11 bg-white dark:bg-slate-950" />}
-            </ThemeFormField>
-          </div>
-        </div>
-      </div>
-
-      <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
-        <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <Calendar className="w-5 h-5 text-amber-500" /> Desired Pickup Date
-        </h3>
-        <div className="max-w-xs">
-          <ThemeFormField name="requested_pickup_date" label="">
-            {(field) => <Input type="datetime-local" {...field} className="h-12 bg-white dark:bg-slate-950 text-lg" />}
-          </ThemeFormField>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Step3Confirm({ price, onLoginRequired }: { price: number | null; onLoginRequired: () => void }) {
-  const { getValues } = useFormContext<BookingFormData>();
-  const { backendUser } = useAuth();
-  const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const values = getValues();
-
-  const handleConfirmBooking = async () => {
-    if (!backendUser) {
-      toast('Please log in to complete your booking.', { icon: '🔒' });
-      onLoginRequired();
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const extractCity = (address: string): string => {
-        const parts = address.split(',');
-        return parts.length > 1 ? parts[parts.length - 2]?.trim() || "City" : "City";
-      };
-
-      const jobPayload = {
-        ...values,
-        customer_id: backendUser.id,
-        pickup_city: extractCity(values.pickup_address),
-        delivery_city: extractCity(values.delivery_address),
-      };
-
-      await apiClient.post('/book/', jobPayload);
-      toast.success("Booking successful! Redirecting...");
-      router.push('/dashboard/orders');
-    } catch (error: any) {
-      // Simplified error handling
-      toast.error("Booking failed. Please try again.");
-      console.error(error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
-      <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 bg-gray-50/50 dark:bg-slate-900/50">
-        <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-200 dark:border-gray-800">
-          <span className="font-bold text-lg text-gray-900 dark:text-white">Booking Summary</span>
-          <span className="bg-primary/10 text-primary px-3 py-1 rounded-full text-xs font-bold uppercase">Draft</span>
-        </div>
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Select Job Type</h2>
+        <p className="text-muted-foreground">Choose between residential or commercial service</p>
+      </div>
 
-        <div className="grid md:grid-cols-2 gap-y-6 gap-x-12 mb-6">
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Service</p>
-            <p className="font-semibold">{serviceOptions[values.service_type]?.name}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Date</p>
-            <p className="font-semibold">{values.requested_pickup_date ? new Date(values.requested_pickup_date).toLocaleString() : 'Not scheduled'}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">From</p>
-            <p className="font-semibold flex items-center gap-1"><MapPin className="w-3 h-3 text-blue-500" /> {values.pickup_address}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">To</p>
-            <p className="font-semibold flex items-center gap-1"><MapPin className="w-3 h-3 text-emerald-500" /> {values.delivery_address}</p>
-          </div>
-        </div>
+      <FormField
+        control={control}
+        name="job_type"
+        render={({ field }) => (
+          <FormItem>
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { value: 'RESIDENTIAL', icon: Home, label: 'Residential', desc: 'Home moving services' },
+                { value: 'COMMERCIAL', icon: Building2, label: 'Commercial', desc: 'Business freight' }
+              ].map((type) => {
+                const Icon = type.icon;
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => field.onChange(type.value)}
+                    className={`p-6 rounded-xl border-2 transition-all duration-300 hover:scale-105 ${field.value === type.value
+                      ? 'border-primary bg-primary/10 shadow-lg'
+                      : 'border-gray-200 dark:border-gray-800 hover:border-primary/50'
+                      }`}
+                  >
+                    <Icon className={`w-12 h-12 mx-auto mb-3 ${field.value === type.value ? 'text-primary' : 'text-gray-400'}`} />
+                    <h3 className="font-semibold text-lg mb-1">{type.label}</h3>
+                    <p className="text-sm text-muted-foreground">{type.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}
 
-        <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-800">
-          <span className="text-muted-foreground">Estimated Total</span>
-          <span className="text-3xl font-black text-gray-900 dark:text-white">${price?.toFixed(2)}</span>
+function ServiceStep() {
+  const { control, watch } = useFormContext<BookingFormData>();
+  const jobType = watch('job_type');
+
+  const services = jobType === 'RESIDENTIAL'
+    ? [
+      { value: 'RESIDENTIAL_MOVING', label: 'Full Home Moving', desc: 'Complete moving service with crew' },
+      { value: 'SMALL_DELIVERIES', label: 'Small Delivery', desc: 'Few items or boxes' }
+    ]
+    : [
+      { value: 'OFFICE_RELOCATION', label: 'Office Relocation', desc: 'Business asset transport' },
+      { value: 'PALLET_DELIVERY', label: 'Pallet Delivery', desc: 'Warehouse freight' }
+    ];
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Service Type</h2>
+        <p className="text-muted-foreground">Choose your specific service</p>
+      </div>
+
+      <FormField
+        control={control}
+        name="service_type"
+        render={({ field }) => (
+          <FormItem>
+            <div className="grid grid-cols-1 gap-4">
+              {services.map((service) => (
+                <button
+                  key={service.value}
+                  type="button"
+                  onClick={() => field.onChange(service.value)}
+                  className={`p-6 rounded-xl border-2 transition-all text-left ${field.value === service.value
+                    ? 'border-primary bg-primary/10'
+                    : 'border-gray-200 dark:border-gray-800'
+                    }`}
+                >
+                  <h3 className="font-semibold text-lg mb-1">{service.label}</h3>
+                  <p className="text-sm text-muted-foreground">{service.desc}</p>
+                </button>
+              ))}
+            </div>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="cargo_description"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Cargo Description</FormLabel>
+            <FormControl>
+              <Textarea {...field} placeholder="Describe your items..." rows={4} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </div>
+  );
+}
+
+function MetricsStep() {
+  const { control, watch } = useFormContext<BookingFormData>();
+  const jobType = watch('job_type');
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Job Metrics</h2>
+        <p className="text-muted-foreground">Provide details for accurate pricing</p>
+      </div>
+
+      {jobType === 'RESIDENTIAL' ? (
+        <>
+          <FormField
+            control={control}
+            name="room_count"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Number of Rooms</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} placeholder="e.g., 3" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="crew_size"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Preferred Crew Size (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)} placeholder="e.g., 2" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </>
+      ) : (
+        <>
+          <FormField
+            control={control}
+            name="weight_lbs"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Weight (lbs)</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} placeholder="e.g., 1500" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="pallet_count"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Pallet Count (Optional)</FormLabel>
+                <FormControl>
+                  <Input type="number" {...field} onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)} placeholder="e.g., 4" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={control}
+            name="is_hazardous"
+            render={({ field }) => (
+              <FormItem className="flex items-center space-x-3 space-y-0 p-4 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/10">
+                <FormControl>
+                  <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+                <div className="flex-1">
+                  <FormLabel className="text-sm font-medium flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    Hazardous Material
+                  </FormLabel>
+                  <p className="text-xs text-muted-foreground">Check if shipment contains hazardous materials</p>
+                </div>
+              </FormItem>
+            )}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+function LogisticsStep() {
+  const { control } = useFormContext<BookingFormData>();
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Logistics Details</h2>
+        <p className="text-muted-foreground">Pickup and delivery information</p>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg">Pickup Information</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField control={control} name="pickup_address" render={({ field }) => (
+            <FormItem className="col-span-2"><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="pickup_city" render={({ field }) => (
+            <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="pickup_contact_person" render={({ field }) => (
+            <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="pickup_contact_phone" render={({ field }) => (
+            <FormItem className="col-span-2"><FormLabel>Phone</FormLabel><FormControl><Input {...field} type="tel" /></FormControl><FormMessage /></FormItem>
+          )} />
         </div>
       </div>
 
-      <Button
-        onClick={handleConfirmBooking}
-        disabled={isSubmitting}
-        size="lg"
-        className="w-full text-lg h-14 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xl shadow-emerald-500/20"
-      >
-        {isSubmitting ? (
-          <span className="flex items-center gap-2"><div className="animate-spin rounded-full h-4 w-4 border-2 border-white/50"></div> Processing...</span>
-        ) : (
-          backendUser ? "Confirm Booking" : "Login to Book"
-        )}
+      <div className="space-y-4">
+        <h3 className="font-semibold text-lg">Delivery Information</h3>
+        <div className="grid grid-cols-2 gap-4">
+          <FormField control={control} name="delivery_address" render={({ field }) => (
+            <FormItem className="col-span-2"><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="delivery_city" render={({ field }) => (
+            <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="delivery_contact_person" render={({ field }) => (
+            <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+          )} />
+          <FormField control={control} name="delivery_contact_phone" render={({ field }) => (
+            <FormItem className="col-span-2"><FormLabel>Phone</FormLabel><FormControl><Input {...field} type="tel" /></FormControl><FormMessage /></FormItem>
+          )} />
+        </div>
+      </div>
+
+      <FormField control={control} name="requested_pickup_date" render={({ field }) => (
+        <FormItem><FormLabel>Requested Pickup Date</FormLabel><FormControl><Input {...field} type="datetime-local" /></FormControl><FormMessage /></FormItem>
+      )} />
+    </div>
+  );
+}
+
+function ConfirmStep({ price, onSubmit }: { price: number | null; onSubmit: () => void }) {
+  const { getValues } = useFormContext<BookingFormData>();
+  const values = getValues();
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Confirm Booking</h2>
+        <p className="text-muted-foreground">Review your details before submitting</p>
+      </div>
+
+      {price && (
+        <div className="bg-gradient-to-br from-primary/10 to-emerald-500/10 rounded-xl p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-1">Estimated Price</p>
+          <p className="text-4xl font-bold text-primary">${price.toFixed(2)}</p>
+        </div>
+      )}
+
+      <div className="space-y-3 text-sm">
+        <div className="grid grid-cols-2 gap-2">
+          <span className="text-muted-foreground">Job Type:</span>
+          <span className="font-medium">{values.job_type}</span>
+          <span className="text-muted-foreground">Service:</span>
+          <span className="font-medium">{values.service_type}</span>
+          <span className="text-muted-foreground">From:</span>
+          <span className="font-medium">{values.pickup_city}</span>
+          <span className="text-muted-foreground">To:</span>
+          <span className="font-medium">{values.delivery_city}</span>
+        </div>
+      </div>
+
+      <Button onClick={onSubmit} size="lg" className="w-full">
+        <CheckCircle className="w-5 h-5 mr-2" /> Confirm Booking
       </Button>
     </div>
   );
