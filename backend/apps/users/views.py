@@ -134,7 +134,7 @@ class CreateUserView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         email = request.data.get('email')
         password = request.data.get('password')
-        # ... other fields
+        role = request.data.get('role', User.Role.DRIVER)
 
         if not email or not password:
             return Response(
@@ -142,85 +142,107 @@ class CreateUserView(generics.CreateAPIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Check if Firebase is actually initialized
         try:
-            # We try to access the default app. If it's not initialized,
-            # this might throw or return None depending on version,
-            # but auth.create_user will definitely fail.
-            pass
-        except Exception:
-            return Response(
-                {"error": "Firebase service is unavailable."},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
-            )
-
-        firebase_user = None
-        try:
-            # Step 1: Create user in Firebase
-            try:
-                firebase_user = auth.create_user(
+            # For staff users (DRIVER, MANAGER, ADMIN), skip Firebase and use Django auth
+            if role in [User.Role.DRIVER, User.Role.MANAGER, User.Role.ADMIN]:
+                # Check if user already exists  
+                if User.objects.filter(email=email).exists():
+                    return Response(
+                        {"error": "A user with this email already exists."},
+                        status=status.HTTP_409_CONFLICT
+                    )
+                
+                # Create user with Django's built-in auth (no Firebase needed)
+                local_user = User.objects.create_user(
+                    username=email,  # Use email as username for staff
                     email=email,
                     password=password,
-                    display_name=f"{request.data.get('first_name', '')} {request.data.get('last_name', '')}".strip()
+                    first_name=request.data.get('first_name', ''),
+                    last_name=request.data.get('last_name', ''),
+                    role=role
                 )
-            except ValueError as e:
-                # likely "The default Firebase app does not exist" or
-                # similar config issue
-                logger.error(f"Firebase configuration error: {e}")
+                
+                serializer = self.get_serializer(local_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+            # For CUSTOMER role, use Firebase (original logic)
+            # Check if Firebase is actually initialized
+            try:
+                pass
+            except Exception:
                 return Response(
-                    {"error": "Identity service unavailable."},
+                    {"error": "Firebase service is unavailable."},
                     status=status.HTTP_503_SERVICE_UNAVAILABLE
                 )
-            except auth.EmailAlreadyExistsError:
-                return Response(
-                    {"error": "A user with this email already exists."},
-                    status=status.HTTP_409_CONFLICT
-                )
-            except Exception as e:
-                logger.error(f"Firebase creation failed: {e}")
-                raise e  # Re-raise to be caught by the outer try/except
 
-            # Step 2: Create local user, using Firebase UID as username
-            # Use a transaction to ensure no zombie Firebase users
+            firebase_user = None
             try:
-                with transaction.atomic():
-                    local_user = User.objects.create_user(
-                        username=firebase_user.uid,
-                        email=email,
-                        # CRITICAL: create_user hashes the password.
-                        password=password,
-                        first_name=request.data.get('first_name', ''),
-                        last_name=request.data.get('last_name', ''),
-                        role=request.data.get('role', User.Role.DRIVER)
-                    )
-            except Exception as db_error:
-                # If local DB creation fails, DELETE Firebase user
-                logger.error(
-                    f"Local user creation failed: {db_error}. "
-                    f"Rolling back Firebase user {firebase_user.uid}..."
-                )
+                # Step 1: Create user in Firebase
                 try:
-                    auth.delete_user(firebase_user.uid)
-                    logger.info(
-                        f"Rolled back Firebase user {firebase_user.uid}"
+                    firebase_user = auth.create_user(
+                        email=email,
+                        password=password,
+                        display_name=f"{request.data.get('first_name', '')} {request.data.get('last_name', '')}".strip()
                     )
-                except Exception as cleanup_error:
-                    logger.critical(
-                        "CRITICAL: Failed to rollback Firebase user "
-                        f"{firebase_user.uid} after local DB failure! "
-                        f"Error: {cleanup_error}"
+                except ValueError as e:
+                    logger.error(f"Firebase configuration error: {e}")
+                    return Response(
+                        {"error": "Identity service unavailable."},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE
                     )
+                except auth.EmailAlreadyExistsError:
+                    return Response(
+                        {"error": "A user with this email already exists."},
+                        status=status.HTTP_409_CONFLICT
+                    )
+                except Exception as e:
+                    logger.error(f"Firebase creation failed: {e}")
+                    raise e
 
-                # Re-raise the original DB error to return a 500
-                raise db_error
+                # Step 2: Create local user, using Firebase UID as username
+                try:
+                    with transaction.atomic():
+                        local_user = User.objects.create_user(
+                            username=firebase_user.uid,
+                            email=email,
+                            password=password,
+                            first_name=request.data.get('first_name', ''),
+                            last_name=request.data.get('last_name', ''),
+                            role=role
+                        )
+                except Exception as db_error:
+                    # If local DB creation fails, DELETE Firebase user
+                    logger.error(
+                        f"Local user creation failed: {db_error}. "
+                        f"Rolling back Firebase user {firebase_user.uid}..."
+                    )
+                    try:
+                        auth.delete_user(firebase_user.uid)
+                        logger.info(
+                            f"Rolled back Firebase user {firebase_user.uid}"
+                        )
+                    except Exception as cleanup_error:
+                        logger.critical(
+                            "CRITICAL: Failed to rollback Firebase user "
+                            f"{firebase_user.uid} after local DB failure! "
+                            f"Error: {cleanup_error}"
+                        )
+                    raise db_error
 
-            serializer = self.get_serializer(local_user)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+                serializer = self.get_serializer(local_user)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            except Exception as e:
+                logger.error(f"Error creating customer user: {e}", exc_info=True)
+                return Response(
+                    {"error": f"Internal error: {str(e)}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         except Exception as e:
             logger.error(f"Error in CreateUserView: {e}", exc_info=True)
             return Response(
-                {"error": "An internal server error occurred."},
+                {"error": f"Internal error: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

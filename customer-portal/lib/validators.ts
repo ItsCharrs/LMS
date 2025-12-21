@@ -28,9 +28,9 @@ const residentialJobSchema = z.object({
 
     // Residential-specific metrics
     room_count: z.number().min(1, "At least 1 room required").max(20, "Maximum 20 rooms"),
-    volume_cf: z.number().positive().optional(),
+    volume_cf: z.number().positive().optional().or(z.literal(0)).optional(),
     estimated_items: z.record(z.string(), z.number()).optional(),
-    crew_size: z.number().min(1).max(10).optional(),
+    crew_size: z.number().max(10).optional().or(z.literal(0)).optional(),
 
     // Pricing (optional for customers, filled by system)
     pricing_model: z.enum(['HOURLY', 'FLAT_RATE']).optional(),

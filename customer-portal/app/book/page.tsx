@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider, useFormContext } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '@/context/AuthContext';
@@ -32,10 +32,11 @@ export default function EnhancedBookingPage() {
   const [estimatedPrice, setEstimatedPrice] = useState<number | null>(null);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [direction, setDirection] = useState(0);
+  const [pendingSubmission, setPendingSubmission] = useState(false);
   const { backendUser } = useAuth();
   const router = useRouter();
 
-  const methods = useForm<BookingFormData>({
+  const methods = useForm<any>({
     resolver: zodResolver(bookingSchema),
     mode: 'onTouched',
     defaultValues: {
@@ -43,11 +44,11 @@ export default function EnhancedBookingPage() {
       service_type: undefined,
       cargo_description: "",
       // Residential defaults
-      room_count: 0,
+      room_count: 1,
       volume_cf: 0,
       crew_size: 0,
       // Commercial defaults
-      weight_lbs: 0,
+      weight_lbs: 1,
       pallet_count: 0,
       is_hazardous: false,
       // Location defaults
@@ -60,7 +61,7 @@ export default function EnhancedBookingPage() {
       delivery_contact_person: "",
       delivery_contact_phone: "",
       requested_pickup_date: "",
-    } as any,
+    },
   });
 
   const { trigger, getValues, watch } = methods;
@@ -91,7 +92,7 @@ export default function EnhancedBookingPage() {
     }
   };
 
-  const getStepFields = (step: number): (keyof BookingFormData)[] => {
+  const getStepFields = (step: number): string[] => {
     switch (step) {
       case 1: return ['job_type'];
       case 2: return ['service_type', 'cargo_description'];
@@ -127,20 +128,59 @@ export default function EnhancedBookingPage() {
     }
   };
 
-  const onSubmit = async (data: BookingFormData) => {
+  const onSubmit = async (data: any) => {
+    console.log('onSubmit called!', { backendUser, data });
+
     if (!backendUser) {
+      console.log('No backend user, showing auth modal');
+      setPendingSubmission(true);
       setIsAuthModalOpen(true);
       return;
     }
 
     try {
-      await apiClient.post('/book/', data);
+      console.log('Submitting booking...');
+      console.log('Original data:', data);
+
+      // Remove customer_id from data - backend sets this from authenticated user
+      const { customer_id, ...bookingData } = data;
+      console.log('Removed customer_id:', customer_id);
+      console.log('Final booking data to send:', bookingData);
+
+      await apiClient.post('/book/', bookingData);
       toast.success('Booking submitted successfully!');
       router.push('/dashboard');
+      setPendingSubmission(false);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to submit booking');
+      console.error('Booking error:', error);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+
+      const errorMessage = error.response?.data?.message
+        || error.response?.data?.detail
+        || JSON.stringify(error.response?.data)
+        || 'Failed to submit booking';
+
+      toast.error(errorMessage);
+      setPendingSubmission(false);
     }
   };
+
+  // Auto-submit after successful login
+  useEffect(() => {
+    if (backendUser && pendingSubmission && isAuthModalOpen === false) {
+      // User has logged in and we have a pending submission
+      const submitBooking = async () => {
+        const data = methods.getValues();
+        const isValid = await methods.trigger();
+
+        if (isValid) {
+          await onSubmit(data);
+        }
+      };
+      submitBooking();
+    }
+  }, [backendUser, pendingSubmission, isAuthModalOpen]);
 
   const variants = {
     enter: (direction: number) => ({ x: direction > 0 ? 50 : -50, opacity: 0 }),
@@ -150,7 +190,10 @@ export default function EnhancedBookingPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-950 py-12 px-4">
-      {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />}
+      {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => {
+        setIsAuthModalOpen(false);
+        setPendingSubmission(false);
+      }} />}
 
       <div className="container mx-auto max-w-3xl">
         <FormProvider {...methods}>
@@ -199,7 +242,24 @@ export default function EnhancedBookingPage() {
                 {currentStep === 2 && <ServiceStep />}
                 {currentStep === 3 && <MetricsStep />}
                 {currentStep === 4 && <LogisticsStep />}
-                {currentStep === 5 && <ConfirmStep price={estimatedPrice} onSubmit={methods.handleSubmit(onSubmit)} />}
+                {currentStep === 5 && <ConfirmStep price={estimatedPrice} onSubmit={async () => {
+                  const isValid = await methods.trigger();
+                  if (isValid) {
+                    const data = methods.getValues();
+                    await onSubmit(data);
+                  } else {
+                    const errors = methods.formState.errors;
+                    console.log('Form validation failed. Errors:', errors);
+
+                    // Show more helpful error message
+                    const errorFields = Object.keys(errors);
+                    if (errorFields.length > 0) {
+                      toast.error(`Please check: ${errorFields.join(', ')}`);
+                    } else {
+                      toast.error('Please check all required fields');
+                    }
+                  }
+                }} />}
               </motion.div>
             </AnimatePresence>
 
@@ -477,8 +537,13 @@ function LogisticsStep() {
 }
 
 function ConfirmStep({ price, onSubmit }: { price: number | null; onSubmit: () => void }) {
-  const { getValues } = useFormContext<BookingFormData>();
+  const { getValues } = useFormContext<any>();
   const values = getValues();
+
+  const handleClick = () => {
+    console.log('Confirm button clicked!');
+    onSubmit();
+  };
 
   return (
     <div className="space-y-6">
@@ -507,7 +572,12 @@ function ConfirmStep({ price, onSubmit }: { price: number | null; onSubmit: () =
         </div>
       </div>
 
-      <Button onClick={onSubmit} size="lg" className="w-full">
+      <Button
+        type="button"
+        onClick={handleClick}
+        size="lg"
+        className="w-full cursor-pointer"
+      >
         <CheckCircle className="w-5 h-5 mr-2" /> Confirm Booking
       </Button>
     </div>

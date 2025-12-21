@@ -176,7 +176,7 @@ const getStatusConfig = (status: ShipmentListItem['status']) => {
 
 export default function JobsScreen() {
   const { user, logout } = useAuth();
-  const { data: assignedJobs, error, isLoading, mutate } = useApi<ShipmentListItem[]>('/transportation/drivers/me/jobs/');
+  const { data: assignedJobs, error, isLoading, mutate } = useApi<ShipmentListItem[]>('/driver/jobs/');
   const navigation = useNavigation<JobsScreenNavigationProp>();
 
   const getTimeBasedGreeting = () => {

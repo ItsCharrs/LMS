@@ -22,6 +22,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import LoginScreen from '../screens/LoginScreen';
 import JobsScreen from '../screens/JobsScreen';
 import JobDetailScreen from '../screens/JobDetailScreen';
+import EarningsScreen from '../screens/EarningsScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import { StainedGlassTheme } from '../styles/globalStyles';
@@ -34,6 +35,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Jobs: undefined;
+  Earnings: undefined;
   History: undefined;
   Profile: undefined;
 };
@@ -73,6 +75,7 @@ function StainedGlassTabBar({ state, descriptors, navigation }: any) {
 
             let iconName = 'list';
             if (route.name === 'Jobs') iconName = isFocused ? 'briefcase' : 'briefcase-outline';
+            else if (route.name === 'Earnings') iconName = isFocused ? 'cash' : 'cash-outline';
             else if (route.name === 'History') iconName = isFocused ? 'time' : 'time-outline';
             else if (route.name === 'Profile') iconName = isFocused ? 'person' : 'person-outline';
 
@@ -134,6 +137,11 @@ function MainTabNavigator() {
           options={{
             title: 'Jobs',
           }}
+        />
+        <Tab.Screen
+          name="Earnings"
+          component={EarningsScreen}
+          options={{ title: 'Earnings' }}
         />
         <Tab.Screen
           name="History"

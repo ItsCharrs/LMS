@@ -35,7 +35,9 @@ class JobSerializer(serializers.ModelSerializer):
     customer_id = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         source='customer',
-        write_only=True
+        write_only=True,
+        required=False,
+        allow_null=True
     )
     
     # Include timeline in read operations

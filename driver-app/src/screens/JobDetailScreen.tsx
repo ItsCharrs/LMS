@@ -26,6 +26,7 @@ import apiClient from '../lib/api';
 // Stained Glass Components
 import { ScreenWrapper } from '../components/ScreenWrapper';
 import { StainedGlassCard } from '../components/StainedGlassCard';
+import { JobTimeline } from '../components/JobTimeline';
 import {
   StainedGlassTheme,
   Typography,
@@ -131,9 +132,9 @@ export default function JobDetailScreen() {
     setStatusUpdating(true);
     try {
       if (newStatus === 'DELIVERED') {
-          setDeliveryModalVisible(true);
-          setStatusUpdating(false);
-          return;
+        setDeliveryModalVisible(true);
+        setStatusUpdating(false);
+        return;
       }
 
       await apiClient.post(`/driver/jobs/${jobId}/update_status/`, {
@@ -151,41 +152,41 @@ export default function JobDetailScreen() {
   };
 
   const handleFinishDelivery = async (photos: any[], signature: string) => {
-      setStatusUpdating(true);
-      try {
-          const formData = new FormData();
-          
-          if (signature) {
-             formData.append('proof_of_delivery_signature', {
-                uri: `data:image/png;base64,${signature}`,
-                name: 'signature.png',
-                type: 'image/png'
-             } as any);
-          }
+    setStatusUpdating(true);
+    try {
+      const formData = new FormData();
 
-          photos.forEach((photo, index) => {
-             formData.append('photos', {
-                 uri: photo.uri,
-                 name: `photo_${index}.jpg`,
-                 type: 'image/jpeg'
-             } as any);
-          });
-
-          // Using the new complete-delivery endpoint
-          await apiClient.post(`/driver/jobs/${jobId}/complete-delivery/`, formData, {
-               headers: { 'Content-Type': 'multipart/form-data' }
-          });
-          
-          Alert.alert("Success", "Job Completed!");
-          setDeliveryModalVisible(false);
-          mutate();
-          navigation.goBack();
-      } catch (e: any) {
-          console.error("Completion Error", e);
-          Alert.alert("Error", "Failed to upload delivery data. " + (e.message || "Unknown error"));
-      } finally {
-          setStatusUpdating(false);
+      if (signature) {
+        formData.append('proof_of_delivery_signature', {
+          uri: `data:image/png;base64,${signature}`,
+          name: 'signature.png',
+          type: 'image/png'
+        } as any);
       }
+
+      photos.forEach((photo, index) => {
+        formData.append('photos', {
+          uri: photo.uri,
+          name: `photo_${index}.jpg`,
+          type: 'image/jpeg'
+        } as any);
+      });
+
+      // Using the new complete-delivery endpoint
+      await apiClient.post(`/driver/jobs/${jobId}/complete-delivery/`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      Alert.alert("Success", "Job Completed!");
+      setDeliveryModalVisible(false);
+      mutate();
+      navigation.goBack();
+    } catch (e: any) {
+      console.error("Completion Error", e);
+      Alert.alert("Error", "Failed to upload delivery data. " + (e.message || "Unknown error"));
+    } finally {
+      setStatusUpdating(false);
+    }
   }
 
   if (isLoading) return (
@@ -299,10 +300,17 @@ export default function JobDetailScreen() {
                 <Text style={styles.customerLabel}>Client</Text>
               </View>
               <TouchableOpacity style={styles.callButton} onPress={() => callNumber(job.pickup_contact_phone || '')}>
-                 <Ionicons name="call" size={20} color="#FFFFFF" />
+                <Ionicons name="call" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Timeline Section */}
+          {job.timeline && job.timeline.length > 0 && (
+            <View style={styles.timelineSection}>
+              <JobTimeline timeline={job.timeline} />
+            </View>
+          )}
 
         </StainedGlassCard>
       </ScrollView>
@@ -310,43 +318,43 @@ export default function JobDetailScreen() {
       {/* Action Footer */}
       {job.status !== 'DELIVERED' && job.status !== 'FAILED' && (
         <View style={[styles.actionFooter, { paddingBottom: insets.bottom + Spacing.md }]}>
-             {job.status === 'PENDING' || job.status === 'ORDER_PLACED' ? (
-                <TouchableOpacity
-                  style={styles.primaryActionButton}
-                  onPress={() => handleUpdateStatus('IN_TRANSIT')}
-                  disabled={statusUpdating}
-                >
-                    {statusUpdating ? <ActivityIndicator color="#1A0B4E" /> : (
-                        <Text style={styles.primaryActionText}>Start Trip</Text>
-                    )}
-                </TouchableOpacity>
-             ) : job.status === 'IN_TRANSIT' ? (
-                <TouchableOpacity
-                  style={[styles.primaryActionButton, { backgroundColor: '#60A5FA' }]}
-                  onPress={() => handleUpdateStatus('PICKED_UP')}
-                  disabled={statusUpdating}
-                >
-                    {statusUpdating ? <ActivityIndicator color="#1A0B4E" /> : (
-                        <Text style={styles.primaryActionText}>Confirm Pickup</Text>
-                    )}
-                </TouchableOpacity>
-             ) : (
-                <TouchableOpacity
-                  style={[styles.primaryActionButton, styles.completeButton]}
-                  onPress={() => setDeliveryModalVisible(true)}
-                >
-                    <Text style={styles.primaryActionText}>Finish Delivery</Text>
-                    <Ionicons name="flag" size={20} color={StainedGlassTheme.colors.parchment} />
-                </TouchableOpacity>
-             )}
+          {job.status === 'PENDING' || job.status === 'ORDER_PLACED' ? (
+            <TouchableOpacity
+              style={styles.primaryActionButton}
+              onPress={() => handleUpdateStatus('IN_TRANSIT')}
+              disabled={statusUpdating}
+            >
+              {statusUpdating ? <ActivityIndicator color="#1A0B4E" /> : (
+                <Text style={styles.primaryActionText}>Start Trip</Text>
+              )}
+            </TouchableOpacity>
+          ) : job.status === 'IN_TRANSIT' ? (
+            <TouchableOpacity
+              style={[styles.primaryActionButton, { backgroundColor: '#60A5FA' }]}
+              onPress={() => handleUpdateStatus('PICKED_UP')}
+              disabled={statusUpdating}
+            >
+              {statusUpdating ? <ActivityIndicator color="#1A0B4E" /> : (
+                <Text style={styles.primaryActionText}>Confirm Pickup</Text>
+              )}
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.primaryActionButton, styles.completeButton]}
+              onPress={() => setDeliveryModalVisible(true)}
+            >
+              <Text style={styles.primaryActionText}>Finish Delivery</Text>
+              <Ionicons name="flag" size={20} color={StainedGlassTheme.colors.parchment} />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      <DeliveryCompletionModal 
-         visible={deliveryModalVisible} 
-         onClose={() => setDeliveryModalVisible(false)}
-         onSubmit={handleFinishDelivery}
-         uploading={statusUpdating}
+      <DeliveryCompletionModal
+        visible={deliveryModalVisible}
+        onClose={() => setDeliveryModalVisible(false)}
+        onSubmit={handleFinishDelivery}
+        uploading={statusUpdating}
       />
     </ScreenWrapper>
   );
@@ -361,7 +369,7 @@ const styles = StyleSheet.create({
   errorText: { color: StainedGlassTheme.colors.parchment, textAlign: 'center', marginBottom: 20 },
   retryButton: { padding: 12, borderWidth: 1, borderColor: StainedGlassTheme.colors.gold, borderRadius: 8 },
   retryButtonText: { color: StainedGlassTheme.colors.gold },
-  
+
   header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 40 },
   backButton: { marginRight: 16 },
   headerContent: { flex: 1 },
@@ -370,10 +378,10 @@ const styles = StyleSheet.create({
   statusBadge: { flexDirection: 'row', padding: 6, borderRadius: 4, alignItems: 'center' },
   statusText: { fontWeight: 'bold', fontSize: 12 },
   date: { color: StainedGlassTheme.colors.parchmentLight },
-  
+
   mainCard: { margin: 20, padding: 20 },
   sectionTitle: { color: StainedGlassTheme.colors.gold, fontWeight: 'bold', marginBottom: 16, fontSize: 12 },
-  
+
   // Route Styles
   routeSection: { marginBottom: 24 },
   locationCard: { backgroundColor: 'rgba(0,0,0,0.2)', padding: 16, borderRadius: 12 },
@@ -407,39 +415,47 @@ const styles = StyleSheet.create({
   customerLabel: { color: StainedGlassTheme.colors.parchmentLight },
   callButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: StainedGlassTheme.colors.gold, justifyContent: 'center', alignItems: 'center' },
 
+  // Timeline Styles
+  timelineSection: {
+    marginTop: 24,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 223, 186, 0.1)',
+  },
+
   // Footer Button Styles
   actionFooter: {
-      position: 'absolute',
-      bottom: 0, 
-      left: 0, 
-      right: 0,
-      backgroundColor: StainedGlassTheme.colors.deepPurple,
-      borderTopWidth: 1,
-      borderTopColor: StainedGlassTheme.colors.goldDark,
-      padding: Spacing.lg,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: StainedGlassTheme.colors.deepPurple,
+    borderTopWidth: 1,
+    borderTopColor: StainedGlassTheme.colors.goldDark,
+    padding: Spacing.lg,
   },
   primaryActionButton: {
-      backgroundColor: StainedGlassTheme.colors.gold,
-      borderRadius: BorderRadius.lg,
-      height: 56,
-      flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 12,
-      shadowColor: '#000',
-      shadowOffset: {width: 0, height: 4},
-      shadowOpacity: 0.3,
-      shadowRadius: 5,
-      elevation: 5,
+    backgroundColor: StainedGlassTheme.colors.gold,
+    borderRadius: BorderRadius.lg,
+    height: 56,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
   },
   completeButton: {
-      backgroundColor: '#34D399',
+    backgroundColor: '#34D399',
   },
   primaryActionText: {
-      color: '#1A0B4E',
-      fontSize: 16,
-      fontWeight: 'bold',
-      textTransform: 'uppercase',
-      letterSpacing: 1,
+    color: '#1A0B4E',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });

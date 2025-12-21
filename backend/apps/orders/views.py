@@ -114,11 +114,11 @@ class BookingView(generics.CreateAPIView):
 
         # Replicate Invoice creation logic
         total_amount = 50.00
-        if job_instance.service_type == Job.ServiceType.RESIDENTIAL_MOVING:
+        if job_instance.service_type == 'RESIDENTIAL_MOVING':
             total_amount += 250.00
-        elif job_instance.service_type == Job.ServiceType.OFFICE_RELOCATION:
+        elif job_instance.service_type == 'OFFICE_RELOCATION':
             total_amount += 400.00
-        elif job_instance.service_type == Job.ServiceType.PALLET_DELIVERY:
+        elif job_instance.service_type == 'PALLET_DELIVERY':
             total_amount += 100.00
 
         Invoice.objects.create(
