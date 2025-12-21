@@ -37,7 +37,7 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-4 mb-12">
                 <Button asChild size="lg" className="h-14 px-8 text-lg font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
-                  <Link href="/quote">Get Instant Quote</Link>
+                  <Link href="/book">Get Instant Quote</Link>
                 </Button>
                 <Button asChild variant="outline" size="lg" className="h-14 px-8 text-lg font-semibold border-2 hover:bg-muted/50">
                   <Link href="/services">Explore Services</Link>
