@@ -57,8 +57,12 @@ class JobSerializer(serializers.ModelSerializer):
             'service_type', # Legacy support
             'room_count',
             'volume_cf',
+            'estimated_items',
+            'crew_size',
             'pallet_count',
             'weight_lbs',
+            'is_hazardous',
+            'bol_number',
             'pricing_model',
             'hourly_rate',
             'travel_fee',
