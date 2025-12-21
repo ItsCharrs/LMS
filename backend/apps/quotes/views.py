@@ -6,6 +6,7 @@ from decimal import Decimal
 import math
 
 from .models import QuoteCalculatorConfig
+from .permissions import IsAdminRole
 from .serializers import (
     QuoteRequestSerializer,
     QuoteResponseSerializer,
@@ -132,7 +133,7 @@ def calculate_quote(request):
 
 
 @api_view(['GET', 'PUT'])
-@permission_classes([IsAdminUser])
+@permission_classes([IsAdminRole])
 def calculator_config(request):
     """
     Admin API to view/update calculator configuration.
