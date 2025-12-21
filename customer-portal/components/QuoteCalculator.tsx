@@ -17,7 +17,10 @@ import {
 } from '@/components/ui/select';
 
 const quoteSchema = z.object({
-    jobType: z.enum(['RESIDENTIAL', 'COMMERCIAL'], { required_error: 'Please select a job type' }),
+    jobType: z.enum(['RESIDENTIAL', 'COMMERCIAL']).optional(),
+    roomCount: z.string().optional(),
+    palletCount: z.string().optional(),
+    isHazardous: z.boolean().optional(),
     origin: z.string().min(3, 'Origin is required'),
     destination: z.string().min(3, 'Destination is required'),
     packageType: z.string().min(1, 'Please select a package type'),
@@ -46,35 +49,42 @@ export function QuoteCalculator() {
         resolver: zodResolver(quoteSchema),
     });
 
+    const jobType = watch('jobType');
     const packageType = watch('packageType');
 
     const calculateEstimate = async (data: QuoteFormData) => {
         setIsCalculating(true);
         setEstimate(null);
 
+        if (!data.jobType) {
+            alert("Please select a job type");
+            setIsCalculating(false);
+            return;
+        }
+
         try {
             const { default: apiClient } = await import('@/lib/api');
 
-            // Map package type to service_type and job_type
-            const serviceTypeMap: Record<string, { service: string; jobType: string }> = {
-                'small': { service: 'SMALL_DELIVERIES', jobType: 'RESIDENTIAL' },
-                'medium': { service: 'RESIDENTIAL_MOVING', jobType: 'RESIDENTIAL' },
-                'large': { service: 'OFFICE_RELOCATION', jobType: 'COMMERCIAL' },
-                'pallet': { service: 'PALLET_DELIVERY', jobType: 'COMMERCIAL' }
+            // Map package type to service_type based on job type
+            const getServiceType = () => {
+                if (data.jobType === 'RESIDENTIAL') {
+                    return data.packageType === 'small' ? 'SMALL_DELIVERIES' : 'RESIDENTIAL_MOVING';
+                } else {
+                    return data.packageType === 'pallet' ? 'PALLET_DELIVERY' : 'OFFICE_RELOCATION';
+                }
             };
 
-            const mapping = serviceTypeMap[data.packageType] || { service: 'SMALL_DELIVERIES', jobType: 'COMMERCIAL' };
             const weight = parseFloat(data.weight);
 
             const response = await apiClient.post('/quotes/calculate/', {
                 origin: data.origin,
                 destination: data.destination,
-                job_type: mapping.jobType,
-                service_type: mapping.service,
+                job_type: data.jobType,
+                service_type: getServiceType(),
                 weight: weight,
-                // Add estimated metrics based on package type
-                room_count: mapping.jobType === 'RESIDENTIAL' && data.packageType === 'medium' ? 3 : undefined,
-                pallet_count: mapping.jobType === 'COMMERCIAL' && data.packageType === 'pallet' ? Math.ceil(weight / 500) : undefined,
+                // Use actual form values for metrics
+                room_count: data.roomCount ? parseInt(data.roomCount) : undefined,
+                pallet_count: data.palletCount ? parseInt(data.palletCount) : undefined,
             });
 
             setEstimate({
@@ -217,6 +227,54 @@ export function QuoteCalculator() {
                         <p className="text-destructive text-sm mt-1">{errors.weight?.message}</p>
                     )}
                 </div>
+
+                {/* Conditional Fields - Residential */}
+                {jobType === 'RESIDENTIAL' && (
+                    <div>
+                        <Label htmlFor="roomCount" className="text-muted-foreground font-medium mb-2 flex items-center gap-2">
+                            🏠 Number of Rooms
+                        </Label>
+                        <Input
+                            id="roomCount"
+                            type="number"
+                            {...register('roomCount')}
+                            placeholder="e.g., 3"
+                            className="h-12 border-input focus:border-primary focus:ring-primary"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Helps us estimate crew size and pricing</p>
+                    </div>
+                )}
+
+                {/* Conditional Fields - Commercial */}
+                {jobType === 'COMMERCIAL' && (
+                    <>
+                        <div>
+                            <Label htmlFor="palletCount" className="text-muted-foreground font-medium mb-2 flex items-center gap-2">
+                                📦 Pallet Count (Optional)
+                            </Label>
+                            <Input
+                                id="palletCount"
+                                type="number"
+                                {...register('palletCount')}
+                                placeholder="e.g., 4"
+                                className="h-12 border-input focus:border-primary focus:ring-primary"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">Number of standard pallets</p>
+                        </div>
+
+                        <div className="flex items-center space-x-3 p-4 rounded-lg border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-900/10">
+                            <input
+                                type="checkbox"
+                                id="isHazardous"
+                                {...register('isHazardous')}
+                                className="h-4 w-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            <Label htmlFor="isHazardous" className="text-sm font-medium flex items-center gap-2 cursor-pointer">
+                                ⚠️ Contains Hazardous Materials
+                            </Label>
+                        </div>
+                    </>
+                )}
 
                 {/* Submit Button */}
                 <Button
