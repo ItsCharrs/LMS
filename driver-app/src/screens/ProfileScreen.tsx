@@ -172,17 +172,45 @@ export default function ProfileScreen() {
                         style={styles.updateButton}
                         onPress={async () => {
                             try {
+                                // Check if updates are enabled
+                                if (!Updates.isEnabled) {
+                                    Alert.alert(
+                                        'Not Available',
+                                        'Updates are only available in production builds installed via APK/IPA.\n\nYou may be running through Expo Go or Development Build.'
+                                    );
+                                    return;
+                                }
+
                                 const update = await Updates.checkForUpdateAsync();
                                 if (update.isAvailable) {
-                                    await Updates.fetchUpdateAsync();
-                                    Alert.alert('Update Downloaded', 'The app will now restart to apply the update.', [
-                                        { text: 'Restart', onPress: () => Updates.reloadAsync() }
-                                    ]);
+                                    Alert.alert(
+                                        'Update Available',
+                                        'A new version is available. Download now?',
+                                        [
+                                            { text: 'Later', style: 'cancel' },
+                                            {
+                                                text: 'Download',
+                                                onPress: async () => {
+                                                    try {
+                                                        await Updates.fetchUpdateAsync();
+                                                        Alert.alert(
+                                                            'Update Ready',
+                                                            'App will restart to apply update.',
+                                                            [{ text: 'Restart', onPress: () => Updates.reloadAsync() }]
+                                                        );
+                                                    } catch (fetchError) {
+                                                        Alert.alert('Failed', 'Could not download update.');
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    );
                                 } else {
-                                    Alert.alert('Up to Date', 'You are using the latest version.');
+                                    Alert.alert('Up to Date', 'You have the latest version!');
                                 }
                             } catch (e) {
-                                Alert.alert('Error', 'Failed to check for updates. ' + (e as Error).message);
+                                console.error('Update check error:', e);
+                                Alert.alert('Error', 'Check for updates failed: ' + (e as Error).message);
                             }
                         }}
                     >
